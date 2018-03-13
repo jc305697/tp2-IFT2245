@@ -58,14 +58,16 @@ static void sigint_handler(int signum) {
   accepting_connections = 0;
 }
 
-void
-st_init ()
+void st_init ()
 {
   // Handle interrupt
-  signal(SIGINT, &sigint_handler);
+  signal(SIGINT, &sigint_handler); //sigint est le (Signal Interrupt) Interactive attention signal.
+    //sigint_handler est une fonction donc je donne un pointeur vers cette fonction
+    //signal retourne la dernière valeur de la fonction ?
 
   // Initialise le nombre de clients connecté.
   nb_registered_clients = 0;
+
 
   // TODO
 
@@ -89,7 +91,7 @@ st_process_requests (server_thread * st, int socket_fd)
       break;
     char *args = NULL; size_t args_len = 0;
     ssize_t cnt = getline (&args, &args_len, socket_r);
-    if (!args || cnt < 1 || args[cnt - 1] != '\n')
+    if (!args || cnt < 1 || args[cnt - 1] != '\n')//le buffer args est vide ou j'ai moins de 1 caractère qui a été écrit et ou mon dernier caractère n'est pas égale à une fin de ligne
     {
       printf ("Thread %d received incomplete cmd=%s!\n", st->id, cmd);
       break;
@@ -134,8 +136,7 @@ int st_wait() {
   return thread_socket_fd;
 }
 
-void *
-st_code (void *param)
+void *st_code (void *param)
 {
   server_thread *st = (server_thread *) param;
 
