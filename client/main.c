@@ -1,9 +1,8 @@
 #include <stdlib.h>
 
 #include "client_thread.h"
-
-int
-main (int argc, char *argv[])
+int clientconnectserver ();
+int main (int argc, char *argv[])
 {
   if (argc < 5) {
     fprintf (stderr, "Usage: %s <port-nb> <nb-clients> <nb-requests> <resources>...\n",
@@ -11,6 +10,11 @@ main (int argc, char *argv[])
     exit (1);
   }
 
+  int result = clientconnectserver();
+    //TODO: Faire l'envoie parametres
+    //TODO: Envoyer les requetes ensuite
+        //TODO: Creer les mini INIT
+        //TODO:
   port_number = atoi (argv[1]);
   int num_clients = atoi (argv[2]);
   num_request_per_client = atoi (argv[3]);

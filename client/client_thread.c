@@ -14,6 +14,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <strings.h>
+#include <netdb.h>
 
 int port_number = -1;
 int num_request_per_client = -1;
@@ -40,6 +42,41 @@ unsigned int count_dispatched = 0;
 // Nombre total de requêtes envoyées.
 unsigned int request_sent = 0;
 
+//Basé sur https://www.thegeekstuff.com/2011/12/c-socket-programming/?utm_source=feedburner
+int client_connect_server()
+{
+    int client_socket_fd;
+
+    //Crée un socket via addresse IPV4 et TCP ou UDP
+	if (socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0) < 0){
+		perror("ERROR opening socket");
+        return 1;
+    }
+    //Ici on doit aller chercher l'IP du serveur d'une manière ou d'une autre
+    //http://www.gnu.org/software/libc/manual/html_node/Host-Names.html
+    //http://man7.org/linux/man-pages/man3/inet_pton.3.html
+    //https://linux.die.net/man/3/inet_aton
+    if (gethostbyname("localhost") == NULL){
+        //TODO: Peut-être devra créer un hostent si besoin de réutiliser
+        //http://www.cs.rpi.edu/~moorthy/Courses/os98/Pgms/socket.html
+        perror("ERROR finding IP");
+        return 1;
+    };
+    //Addresse serveur
+    struct sockaddr_in serv_addr;
+    //Met des 0 partout en memoire : https://www.tutorialspoint.com/c_standard_library/c_function_memset.htm
+    memset (&serv_addr, '0', sizeof (serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    serv_addr.sin_port = htons(port_number);
+
+    if (connect(client_socket_fd,(struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0 ){
+        perror("ERROR connexion");
+        return 1;
+    };
+
+    return 0;
+}
 
 // Vous devez modifier cette fonction pour faire l'envoie des requêtes
 // Les ressources demandées par la requête doivent être choisies aléatoirement
@@ -68,8 +105,9 @@ ct_code (void *param)
   client_thread *ct = (client_thread *) param;
 
   // TP2 TODO
-  // Connection au server.
-  // Vous devez ici faire l'initialisation des petits clients (`INI`).
+
+    // Connection au server.
+
   // TP2 TODO:END
 
   for (unsigned int request_id = 0; request_id < num_request_per_client;

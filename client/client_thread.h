@@ -29,7 +29,8 @@ struct client_thread
   pthread_attr_t pt_attr;
 };
 
-
+void ct_open_socket();
+int client_connect_server();
 void ct_init (client_thread *);
 void ct_create_and_start (client_thread *);
 void ct_wait_server ();
