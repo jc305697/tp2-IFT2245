@@ -55,18 +55,68 @@ int *available;
 
 static void sigint_handler(int signum) {
   // Code terminaison.
-  accepting_connections = 0;
+  accepting_connections = 0;//je n'acccepte plus de connection
 }
+
+
+char** append(char** tableau, char* element, int ancienIndex){
+
+int longueur = 0;
+char** copie;
+  if (tableau[ancienIndex]==0)
+  {
+    
+    copie = (char **)malloc((2*ancienIndex  )*sizeof(char*));
+    while(longueur != ancienIndex){
+          copie[longueur] = strcpy(copie[longueur],tableau[longueur]);
+        //free tableau[longueur]?
+          longueur = longeur + 1;
+    }
+    copie[longueur + 1] = element;
+    copie[2*ancienIndex] = 0; 
+  }
+
+  if (tableau[ancienIndex]!= 0 && tableau[ancienIndex + 1] != 0)
+  {
+    
+  }
+
+}
+
 
 void st_init ()
 {
   // Handle interrupt
-  signal(SIGINT, &sigint_handler); //sigint est le (Signal Interrupt) Interactive attention signal.
-    //sigint_handler est une fonction donc je donne un pointeur vers cette fonction
-    //signal retourne la dernière valeur de la fonction ?
+  signal(SIGINT, &sigint_handler); 
+  //sigint est le (Signal Interrupt) Interactive attention signal.
+  //sigint_handler est une fonction donc je donne un pointeur vers cette fonction
+  //signal retourne la dernière valeur de la fonction ?
 
   // Initialise le nombre de clients connecté.
   nb_registered_clients = 0;
+  struct sockaddr_in thread_addr;
+  socklen_t socket_len = sizeof (thread_addr);
+  //devrait attendre le beg puis le prog
+   while( accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len) !=-1) {
+
+   }
+
+   /*if ()
+   {
+     
+   }*/
+   char *args = NULL; size_t args_len=0;
+
+   FILE *socket_r = fdopen (socket_fd, "r");
+   ssize_t cnt = getline (&args, &args_len, socket_r);
+   args  = strtok(args,"\n");
+   char** mots;
+
+
+   args = strtok(args," ");
+
+
+
 
 
   // TODO
@@ -123,17 +173,19 @@ int st_wait() {
   struct sockaddr_in thread_addr;
   socklen_t socket_len = sizeof (thread_addr);
   int thread_socket_fd = -1;
-  int end_time = time (NULL) + max_wait_time;
+  int end_time = time (NULL) + max_wait_time; //temps que j'attends 
 
-  while(thread_socket_fd < 0 && accepting_connections) {
-    thread_socket_fd = accept(server_socket_fd,
-        (struct sockaddr *)&thread_addr,
-        &socket_len);
-    if (time(NULL) >= end_time) {
+  while(thread_socket_fd < 0 && accepting_connections) {//tant que je n'ai pas de requetes et que j'accepte les connexions
+    
+    thread_socket_fd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
+  //http://pubs.opengroup.org/onlinepubs/009695399/functions/accept.html
+  //Upon successful completion, accept() shall return the non-negative file descriptor of the accepted socket. Otherwise, -1 shall be returned and errno set to indicate the error.
+    
+    if (time(NULL) >= end_time) {//si j'ai depasse ou egal le temps que de fin d'attente
       break;
     }
   }
-  return thread_socket_fd;
+  return thread_socket_fd;   //si -1 pas eu 
 }
 
 void *st_code (void *param)
@@ -149,11 +201,11 @@ void *st_code (void *param)
     thread_socket_fd = st_wait();
     if (thread_socket_fd < 0)
     {
-      fprintf (stderr, "Time out on thread %d.\n", st->id);
+      fprintf (stderr, "Time out on thread %d.\n", st->id);//reesaye plus tard
       continue;
     }
 
-    if (thread_socket_fd > 0)
+    if (thread_socket_fd > 0)//si j'ai eu une requete
     {
       st_process_requests (st, thread_socket_fd);
       close (thread_socket_fd);

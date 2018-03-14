@@ -79,7 +79,6 @@ int client_connect_server()
 }
 
 // Vous devez modifier cette fonction pour faire l'envoie des requêtes
-// Les ressources demandées par la requête doivent être choisies aléatoirement
 // Les ressources demandées par la requête doivent être choisies aléatoirement (donc ini et requete aléatoire)
 // (sans dépasser le maximum pour le client). Elles peuvent être positives
 // ou négatives.
@@ -182,7 +181,7 @@ st_print_results (FILE * fd, bool verbose)
   {
     fprintf (fd, "\n---- Résultat du client ----\n");
     fprintf (fd, "Requêtes acceptées: %d\n", count_accepted);
-    fprintf (fd, "Requêtes : %d\n", count_on_wait);
+    fprintf (fd, "Requêtes en attentes: %d\n", count_on_wait);
     fprintf (fd, "Requêtes invalides: %d\n", count_invalid);
     fprintf (fd, "Clients : %d\n", count_dispatched);
     fprintf (fd, "Requêtes envoyées: %d\n", request_sent);
