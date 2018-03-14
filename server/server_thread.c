@@ -9,7 +9,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include<pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -25,10 +25,18 @@ enum {
   server_backlog_size = 5
 };
 
+pthread_mutex_t lock;
+
 unsigned int server_socket_fd;
 
 // Nombre de client enregistré.
 int nb_registered_clients;
+
+int *ressourcesLibres;
+int **max;
+int **allouer;
+int **besoin;
+
 
 // Variable du journal.
 // Nombre de requêtes acceptées immédiatement (ACK envoyé en réponse à REQ).
@@ -56,6 +64,15 @@ int *available;
 static void sigint_handler(int signum) {
   // Code terminaison.
   accepting_connections = 0;//je n'acccepte plus de connection
+}
+
+void erreur(const char *message){
+    perror(message);
+
+}
+
+void sendErreur(const char *message){
+  //envoie au client le message d'erreur 
 }
 
 
@@ -94,18 +111,100 @@ void st_init ()
 
   // Initialise le nombre de clients connecté.
   nb_registered_clients = 0;
-  struct sockaddr_in thread_addr;
-  socklen_t socket_len = sizeof (thread_addr);
-  //devrait attendre le beg puis le prog
-   while( accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len) !=-1) {
 
+  int retour_init;
+  retour_init = pthread_mutex_init(lock,NULL);//initialise le mutex
+  if (retour_init != 0)
+  {
+    erreur("erreur init mutex");
+  }
+
+  struct sockaddr_in thread_addr;
+
+  socklen_t socket_len = sizeof (thread_addr);
+
+  int socketFd;
+
+  socketFd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
+  
+   while( socketFd == -1) { 
+      // attend le beg 
+      socketFd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
    }
 
-   /*if ()
-   {
-     
-   }*/
-   char *args = NULL; size_t args_len=0;
+   char *args = NULL; 
+   size_t args_len=0;
+  
+   FILE *socket_r = fdopen (socket_fd, "r");
+  
+   ssize_t cnt = getline (&args, &args_len, socket_r);
+   
+   parse (args," "); 
+
+   int nbRessources;
+
+   if(nbmots > 2  || nbmots <2){
+      sendErreur("mauvais nombre arguments")
+    }
+   
+   if(premiermot == "BEG"){
+
+      if (deuxiememot est un int )
+      {
+         ressourcesLibres = calloc(deuxiememot,sizeof(int));
+         nbRessources = deuxiememot;
+      }
+
+      else{
+        sendErreur("premier argument pas un int");
+      }
+   }
+
+   else{
+    sendErreur("mauvais commande attend BEG");
+   }
+
+   
+   socketFd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
+  
+   while( socketFd == -1) { 
+      // attend le pro 
+      socketFd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
+   }
+
+  arraydemots = parse (args," "); 
+
+  int longeur=0;
+  while(pas fin de arraydemots){
+    longeur++;
+  }
+
+   if(longeur- 1 > nbRessources  || longeur - 1 < nbRessources){
+      sendErreur("mauvais nombre d'arguments");
+    }
+   
+   if(premiermot == "PRO"){
+    for (int i = 1; i < longueur; ++i)
+    {
+        if (arraydemots[i] est un int )
+        {
+           ressourcesLibres[i-1] = arraydemots[i];
+        }
+
+        else{
+          sendErreur("un argument est pas un int");
+        }
+      }
+   }
+
+   else{
+    sendErreur("mauvais commande attend PRO");
+   }
+
+
+
+
+   /*char *args = NULL; size_t args_len=0;
 
    FILE *socket_r = fdopen (socket_fd, "r");
    ssize_t cnt = getline (&args, &args_len, socket_r);
@@ -113,7 +212,7 @@ void st_init ()
    char** mots;
 
 
-   args = strtok(args," ");
+   args = strtok(args," ");*/
 
 
 
@@ -159,7 +258,7 @@ st_process_requests (server_thread * st, int socket_fd)
 }
 
 
-void
+/*void
 st_signal ()
 {
   // TODO: Remplacer le contenu de cette fonction
@@ -167,7 +266,7 @@ st_signal ()
 
 
   // TODO end
-}
+}*/
 
 int st_wait() {
   struct sockaddr_in thread_addr;
