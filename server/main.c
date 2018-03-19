@@ -5,8 +5,7 @@
 
 bool accepting_connections = true;
 
-int
-main (int argc, char *argv[argc + 1])
+int main (int argc, char *argv[argc + 1])
 {
   if (argc < 3)
   {
@@ -25,8 +24,7 @@ main (int argc, char *argv[argc + 1])
   st_init ();
 
   // Part les fils d'exécution.
-  for (unsigned int i = 0; i < num_server_threads; i++)
-  {
+  for (unsigned int i = 0; i < num_server_threads; i++){
     st[i].id = i;
     pthread_attr_init (&(st[i].pt_attr));
     pthread_create (&(st[i].pt_tid), &(st[i].pt_attr), &st_code, &(st[i]));
@@ -35,8 +33,7 @@ main (int argc, char *argv[argc + 1])
   for (unsigned int i = 0; i < num_server_threads; i++)
     pthread_join (st[i].pt_tid, NULL);
 
-  // Signale aux clients de se terminer.
-  st_signal ();
+
 
   // Affiche le journal.
   st_print_results (stdout, true);
