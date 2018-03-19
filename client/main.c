@@ -10,7 +10,7 @@ int main (int argc, char *argv[])
     exit (1);
   }
 
-  int result = clientconnectserver();
+
     //TODO: Faire l'envoie parametres
     //TODO: Envoyer les requetes ensuite
         //TODO: Creer les mini INIT
