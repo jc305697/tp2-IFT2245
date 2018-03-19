@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
 #include "client_thread.h"
 
 // Socket library
@@ -16,11 +15,12 @@
 #include <sys/socket.h>
 #include <strings.h>
 #include <netdb.h>
-
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 int port_number = -1;
 int num_request_per_client = -1;
-int num_resources = -1;
-int *provisioned_resources = NULL;
+//int provisioned_resources[];
 
 // Variable d'initialisation des threads clients.
 unsigned int count = 0;
@@ -57,28 +57,44 @@ unsigned int request_sent = 0;
 int make_random(int max_resources){
     return rand() % (max_resources+1);
 }
+
 void
-send_request (int client_id, int request_id, int socket_fd)
-{
-  // TP2 TODO
+send_request (int client_id, int request_id, int socket_fd,char* message) {
+    FILE *socket_w = fdopen(socket_fd, "w");
+    fprintf(socket_w, "%s", message);
+    // TP2 TODO
     //char* text = NULL;
     //text = (char *) malloc(64);
     //FILE *socket_r = fdopen (socket_fd, "r");
     //FILE *socket_w = fdopen (socket_fd, "w");
     //fwrite("ACK TEST",strlen("ACK TEST")+1,1,socket_w);
-  static char *toSend = "INI 100 50 25 10";
-  int ret;
+
+    //int ret;
     //int send(int sockfd, const void *msg, int len, int flags);
-  if ((ret = send(socket_fd,toSend, strlen(toSend),0))==-1)
-       perror("write() error");
-    if (ret<strlen(toSend)){
-        perror ("Il a pas réussi à tout send");
-    }
-  //fprintf (stdout, "Client %d is sending its %d request\n", client_id,
+    //if ((ret = send(socket_fd,toSend, strlen(toSend),0))==-1)
+    //perror("write() error");
+    //if (ret<strlen(toSend)){
+    // perror ("Il a pas réussi à tout send");
+    // }
+    //fprintf (stdout, "Client %d is sending its %d request\n", client_id,
     //mak  request_id);
 
     //int serverresponse =
-    printf("Client reading : ");
+    printf("Client reading on stream: ");
+    FILE *socket_r = fdopen(socket_fd, "r");
+
+    char *args = NULL;
+    size_t args_len = 0;
+    ssize_t cnt = getdelim(&args, &args_len, (int) ' ', socket_r);
+    switch (cnt) {
+        case -1:
+            perror("Erreur réception client");
+            break;
+        default:
+            break;
+    }
+    printf("Ce que client a reçu %s", args);
+    /*
     char toReceive[20];
     memset (toReceive,'0', 20);
     int res = recv(socket_fd,toReceive, strlen(toReceive),0);
@@ -93,14 +109,17 @@ send_request (int client_id, int request_id, int socket_fd)
             break;
     }
     printf("%s \n", toReceive);
-  // TP2 TODO:END
-
+    */
+    // TP2 TODO:END
 }
+
+
 
 //allo
 //Basé sur https://www.thegeekstuff.com/2011/12/c-socket-programming/?utm_source=feedburner
 int client_connect_server()
 {
+    printf("Un client essaie de créer un socket");
     int client_socket_fd=-1;
 
     //Crée un socket via addresse IPV4 et TCP ou UDP
@@ -132,7 +151,8 @@ ntohs()network to host short
 ntohl()network to host long
      */
     server_address.sin_port = htons(port_number);
-    server_address.sin_addr.s_addr = inet_addr("127.0.0.1");
+    //server_address.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server_address.sin_addr.s_addr = INADDR_ANY;
     //Copie la valeur de l'adresse serveur dans le sockaddr_in
     //bcopy(hostInternet->h_addr, &server_address.sin_addr.s_addr,hostInternet->h_length);
     memset (server_address.sin_zero, '\0', sizeof (server_address.sin_zero));
@@ -146,18 +166,36 @@ ntohl()network to host long
         perror("ERROR connexion");
         return client_socket_fd;
     };
-
+    printf("Client connecté au serveur");
     return client_socket_fd;
 }
 
 void *
 ct_code (void *param)
 {
-  //int socket_fd = -1;
-  client_thread *ct = (client_thread *) param;
-
     int client_socket_fd = client_connect_server();
     //Client connecté au serveur
+
+  client_thread *ct = (client_thread *) param;
+
+    //Initialise le client
+    char message[50]="INI";
+    char append[5];
+    sprintf(append,"%d",ct->id); // put the int into a string
+    strcat(message, append);
+
+    memset(append, 0, sizeof append);
+    //Choisit valeurs max de façon random
+    for (int i =0; i < num_resources;i++){
+        //TODO: Fetch le vrai nb max
+        //snprintf(message, sizeof message, "%d", make_random(10));
+        sprintf(append,"%d",make_random(10)); // put the int into a string
+        strcat(message, append); // modified to append string
+    }
+    //Envoie la requête INI
+    send_request(ct->id,-1,client_socket_fd,message);
+
+    printf("Waiting on server response (expecting an ACK");
 
   for (unsigned int request_id = 0; request_id < num_request_per_client;
       request_id++)
@@ -167,7 +205,7 @@ ct_code (void *param)
       // Vous devez ici coder, conjointement avec le corps de send request,
       // le protocole d'envoi de requête.
 
-      send_request (ct->id, request_id, client_socket_fd);
+      send_request (ct->id, request_id, client_socket_fd,message);
 
       // TP2 TODO:END
 

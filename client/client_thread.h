@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <string.h>
 #include <pthread.h>
 #include <unistd.h>
 
@@ -28,6 +28,11 @@ struct client_thread
   pthread_t pt_tid;
   pthread_attr_t pt_attr;
 };
+
+void send_request (int client_id, int request_id, int socket_fd,char* message);
+void send_config(int socket_fd);
+bool wait_answer(int socket_test);
+int make_random(int max_resources);
 
 void ct_open_socket();
 int client_connect_server();
