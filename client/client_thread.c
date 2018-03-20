@@ -25,7 +25,7 @@ int *provisioned_resources = NULL;
 
 // Variable d'initialisation des threads clients.
 unsigned int count = 0;
-
+void flushmoica();
 
 // Variable du journal.
 // Nombre de requête acceptée (ACK reçus en réponse à REQ)
@@ -63,29 +63,13 @@ void
 send_request (int client_id, int request_id, int socket_fd,char* message) {
     FILE *socket_w = fdopen(socket_fd, "w");
     fprintf(socket_w, "%s", message);
-    // TP2 TODO
-    //char* text = NULL;
-    //text = (char *) malloc(64);
-    //FILE *socket_r = fdopen (socket_fd, "r");
-    //FILE *socket_w = fdopen (socket_fd, "w");
-    //fwrite("ACK TEST",strlen("ACK TEST")+1,1,socket_w);
-
-    //int ret;
-    //int send(int sockfd, const void *msg, int len, int flags);
-    //if ((ret = send(socket_fd,toSend, strlen(toSend),0))==-1)
-    //perror("write() error");
-    //if (ret<strlen(toSend)){
-    // perror ("Il a pas réussi à tout send");
-    // }
-    //fprintf (stdout, "Client %d is sending its %d request\n", client_id,
-    //mak  request_id);
-
-    //int serverresponse =
-    printf("Client reading on stream: ");
+    fflush(socket_w);
+    printf("Client sent %s", message);
+    
     FILE *socket_r = fdopen(socket_fd, "r");
-
     char *args = NULL;
     size_t args_len = 0;
+    //TODO: Changer ceci, cause seg fault
     ssize_t cnt = getdelim(&args, &args_len, (int) ' ', socket_r);
     switch (cnt) {
         case -1:
@@ -114,61 +98,49 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
     // TP2 TODO:END
 }
 
-
-
-//allo
 //Basé sur https://www.thegeekstuff.com/2011/12/c-socket-programming/?utm_source=feedburner
 int client_connect_server()
 {
-    printf("Un client essaie de créer un socket");
+    printf("Un client essaie de créer un socket \n");
     int client_socket_fd=-1;
 
     //Crée un socket via addresse IPV4 et TCP ou UDP
-    if ((client_socket_fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) < 0){
+    if ((client_socket_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
         perror("ERROR opening socket");
         return 1;
     }
-    //Ici on doit aller chercher l'IP du serveur d'une manière ou d'une autre
-    //http://www.gnu.org/software/libc/manual/html_node/Host-Names.html
-    //http://man7.org/linux/man-pages/man3/inet_pton.3.html
-    //https://linux.die.net/man/3/inet_aton
-    //http://www.qnx.com/developers/docs/6.5.0/index.jsp?topic=%2Fcom.qnx.doc.neutrino_lib_ref%2Fh%2Fhostent.html
+
     struct hostent *hostInternet;
     if ((hostInternet = gethostbyname("localhost")) == NULL){
-        //TODO: Peut-être devra créer un hostent si besoin de réutiliser
-        //http://www.cs.rpi.edu/~moorthy/Courses/os98/Pgms/socket.html
         perror("ERROR finding IP");
         return client_socket_fd;
     };
     //Addresse serveur
     struct sockaddr_in server_address;
-    //Met des 0 partout en memoire : https://www.tutorialspoint.com/c_standard_library/c_function_memset.htm
-    memset (&server_address, '0', sizeof (server_address));
+    memset (&server_address, 0, sizeof (server_address));
     server_address.sin_family = AF_INET;
-    //server_address.sin_addr.s_addr = INADDR_ANY;
-    /*htons()host to network short
-htonl()host to network long
-ntohs()network to host short
-ntohl()network to host long
-     */
+   
     server_address.sin_port = htons(port_number);
-    //server_address.sin_addr.s_addr = inet_addr("127.0.0.1");
     server_address.sin_addr.s_addr = INADDR_ANY;
-    //Copie la valeur de l'adresse serveur dans le sockaddr_in
-    //bcopy(hostInternet->h_addr, &server_address.sin_addr.s_addr,hostInternet->h_length);
-    memset (server_address.sin_zero, '\0', sizeof (server_address.sin_zero));
-    //int yes=1;
-    // lose the pesky "Address already in use" error message
-    /*if (setsockopt(listener,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof yes) == -1) {
-        perror("setsockopt");
-        exit(1);
-    }*/
+    
+    //Padding nécessaire posix
+    memset (server_address.sin_zero, 0, sizeof (server_address.sin_zero));
+    
+    printf("** Client désire se connecter ** \n");
+    flushmoica();
+
     if (connect(client_socket_fd,(struct sockaddr *) &server_address, sizeof(server_address)) < 0 ){
         perror("ERROR connexion");
         return client_socket_fd;
     };
-    printf("Client connecté au serveur");
+    printf("+_+ Client est connecté au serveur +_+ \n");
+    flushmoica();
+
     return client_socket_fd;
+}
+
+void flushmoica(){
+    fflush(stdout);
 }
 
 void *
@@ -188,6 +160,7 @@ ct_code (void *param)
     memset(append, 0, sizeof append);
     //Choisit valeurs max de façon random
     for (int i =0; i < num_resources;i++){
+        //TODO: Vérifier si ce code segfault
         //TODO: Fetch le vrai nb max
         //snprintf(message, sizeof message, "%d", make_random(10));
         sprintf(append,"%d",make_random(10)); // put the int into a string
