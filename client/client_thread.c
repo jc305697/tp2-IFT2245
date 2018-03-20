@@ -20,7 +20,8 @@
 #include <arpa/inet.h>
 int port_number = -1;
 int num_request_per_client = -1;
-//int provisioned_resources[];
+int num_resources = -1;
+int *provisioned_resources = NULL;
 
 // Variable d'initialisation des threads clients.
 unsigned int count = 0;
