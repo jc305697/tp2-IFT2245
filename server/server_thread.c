@@ -28,7 +28,7 @@ struct array_t *new_array (size_t capacity);
 
 int push_back(struct array_t *array, struct Client *element);
 void delete_array (struct array_t *array);
-
+void flushmoica();
 #endif
 //fin premiere partie code de fred
 
@@ -210,8 +210,12 @@ void sendAck(FILE *socket_w, int clientTid){
   return;
 }
 
-void attendBeg( socklen_t socket_len ){
 
+void flushmoica(){
+fflush(stdout);
+}
+
+void attendBeg( socklen_t socket_len ){
   int socketFd;
   bool bonneCommande = false;
   while(!bonneCommande){
@@ -222,65 +226,59 @@ void attendBeg( socklen_t socket_len ){
       // attend le beg 
       socketFd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
     }
+    printf("Server accepted connexion from : %s \n", &thread_addr);
     FILE *socket_r = fdopen (socketFd, "r");
     FILE *socket_w = fdopen (socketFd, "w");
 
     char *args = NULL; 
     size_t args_len=0;
-    //int longueur = 0;
 
-    //ssize_t cnt = getline (&args, &args_len, socket_r);
-    ssize_t cnt = getdelim (&args, &args_len,(int)' ', socket_r);
-
-    if (cnt==-1){
-      sendErreur("ERR erreur ligne vide",socket_w);
-      return; 
-    }
-
-    else{
-     if( strcmp(args,"BEG") == 0){
+    //TODO: Changer pour getline
+  	char cmd[6] = {NUL, NUL, NUL, NUL, NUL, NUL};
+    if (!fread (cmd, 5, 1, socket_r)){
+        printf("J'AI PAS REÇU UNE COMMANDE \n");
+      sendErreur("ERR mauvaise commande",socket_w);
+      return;
+    
+    }else{
+        printf("Commande reçue \n");
+        printf(cmd);
+        //TODO: Assigner args
+        //if( strcmp(args,"BEG") == 0){
+        if( strcmp("BEG","BEG") == 0){
           //commande est beg
-      free(args);
-
-      args = NULL; args_len = 0;
-      ssize_t cnt = getdelim (&args, &args_len,(int)' ', socket_r);// va chercher le premier argument apres la commande
-      int valeur;
-
-      if (cnt==-1){
-       sendErreur("ERR erreur pas d'argument",socket_w);
-     }
-
-     else{
-
-       valeur = atoi(args);
-
-       if (valeur == 0 && strcmp(args,"0") != 0){
-         sendErreur("ERR premier argument pas un int",socket_w);
-         free(args);
-       }
-
-       else if (valeur==0){
-         sendErreur("ERR le nombre de ressource ne peut pas etre egale a 0 ... (gros jugement)",socket_w);
-         free(args);
-       }
-
-       else if (valeur<0){
-         sendErreur("ERR le nombre de ressource ne peut pas etre inferieure a 0 ",socket_w);
-       }
-
-       else{
-         ressourcesLibres = calloc(valeur,sizeof(int));
-         nbChaqueRess = calloc(valeur,sizeof(int));
-         nbRessources = valeur;
-         bonneCommande = true;
-         free(args);
-         sendAck(socket_w,-1);
-         return;
-       }
-     }
-   }
-
-   else{
+            free(args);
+            putchar(cmd[0]);      
+            args = &(cmd[4]); 
+            //ou cmd+4;
+            args_len = 0;
+            //TODO: Changer pour getline
+            //ssize_t cnt = getdelim (&args, &args_len,(int)' ', socket_r);// va chercher le premier argument apres la commande
+            int valeur;
+            int cnt = -1;
+            if (cnt==-1){
+                sendErreur("ERR erreur pas d'argument",socket_w);
+            }else{
+                valeur = atoi(args);
+               if (valeur == 0 && strcmp(args,"0") != 0){
+                 sendErreur("ERR premier argument pas un int",socket_w);
+                 free(args);
+               } else if (valeur==0){
+                 sendErreur("ERR le nombre de ressource ne peut pas etre egale a 0 ... (gros jugement)",socket_w);
+                 free(args);
+               } else if (valeur<0){
+                 sendErreur("ERR le nombre de ressource ne peut pas etre inferieure a 0 ",socket_w);
+               } else{
+                 printf("SERVEUR A BIEN REÇU LE BEG \n");
+                 ressourcesLibres = calloc(valeur,sizeof(int));
+                 nbChaqueRess = calloc(valeur,sizeof(int));
+                 nbRessources = valeur;
+                 free(args);
+                 sendAck(socket_w,-1);
+                 return;
+               }
+        }
+   } else{
     sendErreur("ERR mauvais commande attend BEG",socket_w);
     free(args);
 
@@ -399,6 +397,7 @@ void attendPro( socklen_t socket_len){
 }
 void st_init (){
   // Handle interrupt
+printf("Serveur dans le init");
   signal(SIGINT, &sigint_handler); 
   //sigint est le (Signal Interrupt) Interactive attention signal.
   //sigint_handler est une fonction donc je donne un pointeur vers cette fonction
