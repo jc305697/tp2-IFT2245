@@ -86,6 +86,12 @@ int *available;
 struct array_t {
   size_t size, capacity;
   struct Client **data;
+ // void **data;
+};
+
+struct array_t_string{
+  size_t size, capacity;
+  char **data;
 };
 
 struct array_t *new_array (size_t capacity) {
@@ -98,7 +104,26 @@ struct array_t *new_array (size_t capacity) {
     newA->capacity = capacity;
     newA->size = 0;
 
-    newA->data = malloc(capacity*sizeof(void*));
+    newA->data = malloc(capacity*sizeof(struct Client*));
+  if(!newA->data) {
+    free(newA);
+      newA = NULL;
+    errno = ENOMEM;
+  }
+  return newA;
+}
+
+struct array_t_string *new_arrayString (size_t capacity) {
+  struct array_t_string *newA = malloc(sizeof(*newA));
+  if (!newA) {
+    errno = ENOMEM;
+    return NULL;
+  }
+
+    newA->capacity = capacity;
+    newA->size = 0;
+
+    newA->data = malloc(capacity*sizeof(char**));
   if(!newA->data) {
     free(newA);
       newA = NULL;
@@ -108,9 +133,25 @@ struct array_t *new_array (size_t capacity) {
 }
 
 int push_back(struct array_t *array, struct Client *element) {
-  if (array->size > (array->capacity >> 1)) {
+  if (array->size > (array->capacity - 2)) {
     size_t newsize = array->capacity << 1;
-    struct Client *tmp = realloc(array->data, newsize*sizeof(struct Client));
+    struct Client *tmp = realloc(array->data, newsize*sizeof(struct Client*));
+    if (!tmp) {
+      errno = ENOMEM;
+      return -1;
+    }
+    array->capacity = newsize;
+    array->data = &tmp;
+  }
+  array->data[array->size] = element;
+  array->size++;
+  return 0; 
+}
+
+int push_backString(struct array_t_string *array, char *element) {
+  if (array->size > (array->capacity - 2)) {
+    size_t newsize = array->capacity << 1;
+    char  *tmp = realloc(array->data, newsize*sizeof(char *));
     if (!tmp) {
       errno = ENOMEM;
       return -1;
@@ -133,6 +174,18 @@ void delete_array (struct array_t *array) {
     array = NULL;
   }
 }
+
+void delete_array_string (struct array_t_string *array) {
+  if(array) {
+    struct array_t_string *ptr; 
+    if ((ptr = array)) {
+      free(ptr->data);
+      free(ptr);
+    }
+    array = NULL; 
+  }
+}
+
 //fin deuxieme partie code de fred
 struct array_t deleteClientInArray(struct array_t *array, int clientTid){
   //inspire par le code de fred
@@ -171,6 +224,7 @@ void sendWait(int temps,FILE *socket_w,struct Client client){
  pthread_mutex_lock(&lockReqPro);
   request_processed = request_processed + 1;
   pthread_mutex_unlock(&lockReqPro);
+ 
  return;
 }
 
@@ -189,17 +243,21 @@ bool estDansListe(struct array_t *liste,int clientTid ){
 }
 
 void sendAck(FILE *socket_w, int clientTid){
-	fprintf (socket_w, "ACK");
-	fflush(socket_w);
-	pthread_mutex_lock(&lockCountAccep);
-	count_accepted = count_accepted + 1;
-	pthread_mutex_unlock(&lockCountAccep);
+  fprintf (socket_w, "ACK");
+  fflush(socket_w);
+  
+  pthread_mutex_lock(&lockCountAccep);
+  count_accepted = count_accepted + 1;
+  pthread_mutex_unlock(&lockCountAccep);
 
   pthread_mutex_lock(&lockClientWait);
+  
   if ( clientTid != -1 &&estDansListe(&clientQuiWait,clientTid)){
+  
     pthread_mutex_lock(&lockCouWait);
     count_wait = count_wait + 1;
     pthread_mutex_unlock(&lockCouWait);
+  
     deleteClientInArray(&clientQuiWait,clientTid);
   }
   pthread_mutex_unlock(&lockClientWait);
@@ -207,6 +265,7 @@ void sendAck(FILE *socket_w, int clientTid){
   pthread_mutex_lock(&lockReqPro);
   request_processed = request_processed + 1;
   pthread_mutex_unlock(&lockReqPro);
+  
   return;
 }
 
@@ -214,6 +273,27 @@ void sendAck(FILE *socket_w, int clientTid){
 void flushmoica(){
 fflush(stdout);
 }
+
+struct array_t_string *parseInputGetLine(char *input){
+  char *token =strtok(input,"\n");
+
+  struct array_t_string *array = new_arrayString(5);
+
+  token = strtok(token," ");
+  
+ /* if (token == NULL){
+    return array;
+  }*/
+
+ 
+  while(token != NULL){
+  push_backString(array,token);
+  token = strtok(NULL," ");
+  }
+
+  return array;
+}
+
 
 void attendBeg( socklen_t socket_len ){
   int socketFd;
@@ -234,57 +314,70 @@ void attendBeg( socklen_t socket_len ){
     size_t args_len=0;
 
     //TODO: Changer pour getline
-  	char cmd[6] = {NUL, NUL, NUL, NUL, NUL, NUL};
-    if (!fread (cmd, 5, 1, socket_r)){
-        printf("J'AI PAS REÇU UNE COMMANDE \n");
-      sendErreur("ERR mauvaise commande",socket_w);
-      return;
+    //char cmd[6] = {NUL, NUL, NUL, NUL, NUL, NUL};
     
+    //if (!fread (cmd, 5, 1, socket_r)){
+    if(getline(&args,&args_len,socket_r) == -1){
+
+      printf("J'AI PAS REÇU UNE COMMANDE \n");
+      sendErreur("ERR mauvaise commande",socket_w);
+
+      return;
+
     }else{
-        printf("Commande reçue \n");
-        printf(cmd);
+
+      struct array_t_string input = *parseInputGetLine(args);
+        //fait un free sur args ?
+      printf("Commande reçue \n");
+        //printf(cmd);
         //TODO: Assigner args
         //if( strcmp(args,"BEG") == 0){
-        if( strcmp("BEG","BEG") == 0){
+      if(input.size != 2 ){
+        sendErreur("ERR trop d'arguments",socket_w);
+        free(args);
+        delete_array_string(&input);
+        continue;
+      }
+
+      if( strcmp(input.data[0],"BEG") == 0){
           //commande est beg
-            free(args);
-            putchar(cmd[0]);      
-            args = &(cmd[4]); 
+            //free(args);
+            //putchar(cmd[0]);      
+            //args = &(cmd[4]); 
             //ou cmd+4;
-            args_len = 0;
+        args_len = 0;
             //TODO: Changer pour getline
             //ssize_t cnt = getdelim (&args, &args_len,(int)' ', socket_r);// va chercher le premier argument apres la commande
-            int valeur;
-            int cnt = -1;
-            if (cnt==-1){
-                sendErreur("ERR erreur pas d'argument",socket_w);
-            }else{
-                valeur = atoi(args);
-               if (valeur == 0 && strcmp(args,"0") != 0){
-                 sendErreur("ERR premier argument pas un int",socket_w);
-                 free(args);
-               } else if (valeur==0){
-                 sendErreur("ERR le nombre de ressource ne peut pas etre egale a 0 ... (gros jugement)",socket_w);
-                 free(args);
-               } else if (valeur<0){
-                 sendErreur("ERR le nombre de ressource ne peut pas etre inferieure a 0 ",socket_w);
-               } else{
-                 printf("SERVEUR A BIEN REÇU LE BEG \n");
-                 ressourcesLibres = calloc(valeur,sizeof(int));
-                 nbChaqueRess = calloc(valeur,sizeof(int));
-                 nbRessources = valeur;
-                 free(args);
-                 sendAck(socket_w,-1);
-                 return;
-               }
-        }
-   } else{
-    sendErreur("ERR mauvais commande attend BEG",socket_w);
-    free(args);
+        int valeur;
+          //  int cnt = -1;
+
+        valeur = atoi(input.data[1]);
+        if (valeur == 0 && strcmp(args,"0") != 0){
+         sendErreur("ERR premier argument pas un int",socket_w);
+         free(args);
+       } else if (valeur==0){
+         sendErreur("ERR le nombre de ressource ne peut pas etre egale a 0 ... (gros jugement)",socket_w);
+         free(args);
+       } else if (valeur<0){
+         sendErreur("ERR le nombre de ressource ne peut pas etre inferieure a 0 ",socket_w);
+       } else{
+         printf("SERVEUR A BIEN REÇU LE BEG \n");
+
+         ressourcesLibres = calloc(valeur,sizeof(int));
+         nbChaqueRess = calloc(valeur,sizeof(int));
+         nbRessources = valeur;
+         free(args);
+         sendAck(socket_w,-1);
+         return;
+       }
+
+     } else{
+      sendErreur("ERR mauvais commande attend BEG",socket_w);
+      free(args);
 
       //}
-  } 
-}
+    } 
+  }
 }
 }
 
@@ -311,82 +404,82 @@ void attendPro( socklen_t socket_len){
   size_t args_len=0;
   //int longueur = 0;
      //ssize_t cnt = getline (&args, &args_len, socket_r);
-  ssize_t cnt = getdelim (&args, &args_len,(int)' ', socket_r);
+ // ssize_t cnt = getdelim (&args, &args_len,(int)' ', socket_r);
 
-  if (cnt==-1)
-  {
-    sendErreur("ERR erreur ligne vide",socket_w);
+  if(getline(&args,&args_len,socket_r) == -1){
+
+    sendErreur("ERR mauvaise commande",socket_w);
   }
 
       /*if(nbmots > 2  || nbmots <2){
           sendErreur("mauvais nombre arguments")
         }*/
   else{
-
+   struct array_t_string input = *parseInputGetLine(args);
        //parse (args," "); 
 
-   if( strcmp(args,"PRO") == 0){
-          //commande est PRO
+   if(input.size != nbRessources + 1){
+    sendErreur("ERR trop d'arguments",socket_w);
     free(args);
+    delete_array_string(&input);
+    continue;
+  }
+
+  if( strcmp(input.data[0],"PRO") == 0){
+          //commande est PRO
+    //free(args);
     int longueur = 0; 
     while(longueur != nbRessources){
-      args = NULL; 
-      args_len = 0;
+  //    args = NULL; 
+//      args_len = 0;
 
-      ssize_t cnt = getdelim (&args, &args_len,(int)' ', socket_r);
+      //ssize_t cnt = getdelim (&args, &args_len,(int)' ', socket_r);
 
       int valeur;
 
-      if (cnt==-1){
+      /*if (cnt==-1){
        sendErreur("ERR erreur pas d'argument",socket_w);
-     }
+     }*/
+      longueur = longueur + 1;
 
-              else{ //si au moins un argument
+      while(longueur != nbRessources){
 
-                longueur = longueur + 1;
+        valeur = atoi(input.data[longueur]);
 
-                while(longueur != nbRessources){
+        if (valeur == 0 && strcmp(input.data[longueur],"0") != 0){
 
-                  valeur = atoi(args);
-
-                  if (valeur == 0 && strcmp(args,"0") != 0){
-
-                    sendErreur("ERR une argument n'est pas un int",socket_w);
-                    free(args);
-                    longueur = 0;
-                  }
-
-                  else if (valeur==0){
-                    sendErreur("ERR le nombre de ressource ne peut pas etre egale a 0 ... (gros jugement)",socket_w);
-                    free(args);
-                    break;
-                  }
-
-                  else{
-                   ressourcesLibres[longueur - 1] = valeur;
-                   nbChaqueRess[longueur - 1] = valeur;
-                   free(args);
-                   longueur = longueur + 1;
-
-                   if (longueur == nbRessources)
-                   {
-                     bonneCommande = true;
-                     break;
-                   }
-                 }
-               }
-             } 
-           }
-         }
-
-
-         else{
-          sendErreur("ERR mauvais commande attend PRO",socket_w);
+          sendErreur("ERR une argument n'est pas un int",socket_w);
           free(args);
+          longueur = 0;
         }
-      }
-    } 
-  }
+
+        else if (valeur==0){
+          sendErreur("ERR le nombre de ressource ne peut pas etre egale a 0 ... (gros jugement)",socket_w);
+          free(args);
+          break;
+        }
+
+        else{
+         ressourcesLibres[longueur - 1] = valeur;
+         nbChaqueRess[longueur - 1] = valeur;
+         //free(args);
+         longueur = longueur + 1;
+
+         if (longueur == nbRessources){
+           bonneCommande = true;
+           break;
+         }
+       }
+     }
+   }
+ }
+ else{
+  sendErreur("ERR mauvais commande attend PRO",socket_w);
+  free(args);
+}
+}
+} 
+}
 
 
 
@@ -581,7 +674,7 @@ void st_process_requests (server_thread * st, int socket_fd){
     /*for (int i = 0; i < 4; ++i){
       cmd[i] = (char)NULL;
     }*/
-  	char cmd[4] = {NUL, NUL, NUL, NUL};
+    char cmd[4] = {NUL, NUL, NUL, NUL};
     if (!fread (cmd, 3, 1, socket_r)){
       sendErreur("ERR mauvaise commande",socket_w);
       break;
@@ -1032,7 +1125,7 @@ void st_process_requests (server_thread * st, int socket_fd){
       int positionBesoin = 0;
 
       while(positionBesoin!= (besoin.size - 1) ){
-        if ((*besoin.data)[positionBesoin].tid == tidClient){
+        if (besoin.data[positionBesoin]->tid == tidClient){
           break;
         }
 
