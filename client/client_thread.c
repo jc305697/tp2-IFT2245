@@ -64,21 +64,27 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
     FILE *socket_w = fdopen(socket_fd, "w");
     fprintf(socket_w, "%s", message);
     fflush(socket_w);
-    printf("Client sent %s", message);
+    printf("Client sent %s \n", message);
     
     FILE *socket_r = fdopen(socket_fd, "r");
-    char *args = NULL;
+    char* args; // = (char*) malloc (10*sizeof(char));
+if (args==NULL){
+perror("Buffer marche po");
+exit(1);
+}
+
     size_t args_len = 0;
-    //TODO: Changer ceci, cause seg fault
-    ssize_t cnt = getdelim(&args, &args_len, (int) ' ', socket_r);
+    
+    printf("Client waiting for response..\n");
+    ssize_t cnt = getline(&args, &args_len, socket_r);
     switch (cnt) {
         case -1:
-            perror("Erreur réception client");
+            perror("Erreur réception client \n");
             break;
         default:
             break;
     }
-    printf("Ce que client a reçu %s", args);
+    printf("Ce que client a reçu %s \n", args);
     /*
     char toReceive[20];
     memset (toReceive,'0', 20);

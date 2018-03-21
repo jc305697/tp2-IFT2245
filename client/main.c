@@ -5,8 +5,6 @@
 #define _GNU_SOURCE
 int main (int argc, char *argv[])
 {
-printf("esti de caliss");
-fflush(stdout);
   if (argc < 5) {
     fprintf (stderr, "Usage: %s <port-nb> <nb-clients> <nb-requests> <resources>...\n",
         argv[0]);
@@ -26,9 +24,7 @@ fflush(stdout);
   provisioned_resources = malloc (num_resources * sizeof (int));
   for (unsigned int i = 0; i < num_resources; i++)
     provisioned_resources[i] = atoi (argv[i + 4]);
-    printf("wtf is going on");
   int socket_test = client_connect_server();
-  printf("JE SUIS CONNECTÉ, JE VEUX ENVOYER \n");
   send_config(socket_test);
   bool res = wait_answer(socket_test);
     if (res){
@@ -64,26 +60,27 @@ fflush(stdout);
 //TODO: Pas mettre chiffres fixes
 void send_config(int socket_fd){
     char temp[10];
-    char beg[15] = "BEG ";
-printf("Im on the edge of printing \n");
+    char beg[50] = "BEG ";
     sprintf(temp,"%d",num_resources); 
-printf("i printed this shit \n");
     strcat(beg,temp);
-printf("the cat has worked \n");
+    strcat(beg, " \n");
     char *toSend = beg;
 
-printf("VOICI CE QUE JE VEUX SEND %s \n",toSend);
-flushmoica();
+    printf("VOICI CE QUE JE VEUX SEND %s \n",toSend);
+    flushmoica();
     send_request(0,0,socket_fd,toSend);
-    toSend = "PRO ";
-printf("JE SUIS RENDU AU PRO \n");
-    char append[5];
+    
+    //Send le pro
+    sprintf(toSend,"%s","PRO ");
+    printf("JE SUIS RENDU AU PRO \n");
+    char append[50];
     for (int i=0;i<num_resources;i++){
-        sprintf(append,"%d",provisioned_resources[num_resources]); // put the int into a string
+        sprintf(append,"%d",provisioned_resources[i]); // put the int into a string
         strcat(toSend, append); // modified to append string
         //strcat(toSend,provisioned_resources[num_resources]);
         strcat(toSend, " ");
     }
+    strcat(toSend, " \n");
     send_request(0,1,socket_fd,toSend);
 }
 
