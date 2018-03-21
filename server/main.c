@@ -7,7 +7,6 @@ bool accepting_connections = true;
 
 int main (int argc, char *argv[argc + 1])
 {
-printf("esti de tabarnack");
   if (argc < 3)
   {
     fprintf (stderr, "Usage: %s [port-nb] [nb-threads]\n", argv[0]);

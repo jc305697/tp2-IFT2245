@@ -54,8 +54,8 @@ int nb_registered_clients;
 int *ressourcesLibres;
 int *nbChaqueRess;
 int nbRessources;
-void attendBeg( socklen_t socket_len );
-void attendPro( socklen_t socket_len);
+int attendBeg( socklen_t socket_len );
+void attendPro( int socket_fd);
 struct array_t clientQuiWait; //Clients a qui j'ai dit de wait 
 struct array_t max;
 struct array_t allouer;
@@ -243,7 +243,7 @@ bool estDansListe(struct array_t *liste,int clientTid ){
 }
 
 void sendAck(FILE *socket_w, int clientTid){
-  fprintf (socket_w, "ACK");
+  fprintf (socket_w, "ACK \n");
   fflush(socket_w);
   
   pthread_mutex_lock(&lockCountAccep);
@@ -295,9 +295,10 @@ struct array_t_string *parseInputGetLine(char *input){
 }
 
 
-void attendBeg( socklen_t socket_len ){
+int attendBeg( socklen_t socket_len ){
   int socketFd;
   bool bonneCommande = false;
+printf("Server dans le BEG \n");
   while(!bonneCommande){
 
     socketFd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
@@ -310,13 +311,10 @@ void attendBeg( socklen_t socket_len ){
     FILE *socket_r = fdopen (socketFd, "r");
     FILE *socket_w = fdopen (socketFd, "w");
 
-    char *args = NULL; 
+    char *args = (char*) malloc (10*sizeof(char)); 
     size_t args_len=0;
 
-    //TODO: Changer pour getline
-    //char cmd[6] = {NUL, NUL, NUL, NUL, NUL, NUL};
-    
-    //if (!fread (cmd, 5, 1, socket_r)){
+    printf("About to getline \n");
     if(getline(&args,&args_len,socket_r) == -1){
 
       printf("J'AI PAS REÇU UNE COMMANDE \n");
@@ -325,10 +323,9 @@ void attendBeg( socklen_t socket_len ){
       return;
 
     }else{
-
+      printf("Commande reçue \n");
       struct array_t_string input = *parseInputGetLine(args);
         //fait un free sur args ?
-      printf("Commande reçue \n");
         //printf(cmd);
         //TODO: Assigner args
         //if( strcmp(args,"BEG") == 0){
@@ -368,7 +365,7 @@ void attendBeg( socklen_t socket_len ){
          nbRessources = valeur;
          free(args);
          sendAck(socket_w,-1);
-         return;
+         return socketFd;
        }
 
      } else{
@@ -381,31 +378,31 @@ void attendBeg( socklen_t socket_len ){
 }
 }
 
-void attendPro( socklen_t socket_len){
+void attendPro(int socket_fd){
 
-  int socketFd;
+  //int socketFd;
   //int socket_fd = -1;//que signifie ça ?
 
   bool bonneCommande = false;
-  
+  printf("Server attend le pro \n");
   while(!bonneCommande){
 
-   socketFd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
+   //socketFd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
 
-   while( socketFd == -1) { 
+//   while( socketFd == -1) { 
         // attend le beg 
-    socketFd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
-  }
-  FILE *socket_r = fdopen (socketFd, "r");
-  FILE *socket_w = fdopen (socketFd, "w");
+  //  socketFd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
+  
+  FILE *socket_r = fdopen (socket_fd, "r");
+  FILE *socket_w = fdopen (socket_fd, "w");
 
 
-  char *args = NULL; 
+  char *args; 
   size_t args_len=0;
   //int longueur = 0;
      //ssize_t cnt = getline (&args, &args_len, socket_r);
  // ssize_t cnt = getdelim (&args, &args_len,(int)' ', socket_r);
-
+printf("Right before getline \n");
   if(getline(&args,&args_len,socket_r) == -1){
 
     sendErreur("ERR mauvaise commande",socket_w);
@@ -415,19 +412,21 @@ void attendPro( socklen_t socket_len){
           sendErreur("mauvais nombre arguments")
         }*/
   else{
+printf("Right before parseinputgetline \n");
    struct array_t_string input = *parseInputGetLine(args);
        //parse (args," "); 
-
+printf("Right after parseinput \n");
    if(input.size != nbRessources + 1){
     sendErreur("ERR trop d'arguments",socket_w);
     free(args);
     delete_array_string(&input);
     continue;
   }
-
+printf("After the argument check \n");
   if( strcmp(input.data[0],"PRO") == 0){
           //commande est PRO
     //free(args);
+printf("Serveur a reçu un PRO \n ");
     int longueur = 0; 
     while(longueur != nbRessources){
   //    args = NULL; 
@@ -490,7 +489,7 @@ void attendPro( socklen_t socket_len){
 }
 void st_init (){
   // Handle interrupt
-printf("Serveur dans le init");
+printf("Serveur dans le init \n");
   signal(SIGINT, &sigint_handler); 
   //sigint est le (Signal Interrupt) Interactive attention signal.
   //sigint_handler est une fonction donc je donne un pointeur vers cette fonction
@@ -573,9 +572,9 @@ printf("Serveur dans le init");
 
   socklen_t socket_len = sizeof (thread_addr);
 
-  attendBeg(socket_len);
+  int socketfd = attendBeg(socket_len);
 
-  attendPro(socket_len);
+  attendPro(socketfd);
 
 
   // TODO
