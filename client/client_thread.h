@@ -10,7 +10,7 @@
 
 /* Port TCP sur lequel le serveur attend des connections.  */
 extern int port_number;
-
+//#include <string.h>
 /* Nombre de requêtes que chaque client doit envoyer.  */
 extern int num_request_per_client;
 
@@ -39,7 +39,7 @@ int client_connect_server();
 void ct_init (client_thread *);
 void ct_create_and_start (client_thread *);
 void ct_wait_server ();
-
+void flushmoica();
 void st_print_results (FILE *, bool);
 
 #endif // CLIENTTHREAD_H

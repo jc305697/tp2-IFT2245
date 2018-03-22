@@ -4,7 +4,7 @@ BUILD_DIR=build
 TIMEOUT=10
 VALGRIND=valgrind --leak-check=yes --error-exitcode=1
 CC=gcc
-CFLAGS=-g -std=c99 -Wall -pedantic -D_REENTRENT=1
+CFLAGS=-g -std=gnu99 -Wall -pedantic -D_REENTRENT=1
 LDFLAGS=-pthread
 
 CLT_O = main.o client_thread.o
@@ -17,7 +17,7 @@ SRV_O = main.o server_thread.o
 
 default: all
 
-all: $(BUILD_DIR)/tp2_client $(BUILD_DIR)/tp2_server rapport.pdf
+all: $(BUILD_DIR)/tp2_client $(BUILD_DIR)/tp2_server 
 
 $(BUILD_DIR)/tp2_client: $(patsubst %.o,$(BUILD_DIR)/client/%.o, $(CLT_O))
 	$(CC) $(LDFLAGS) -o $@ $(patsubst %.o,$(BUILD_DIR)/client/%.o, $(CLT_O))
@@ -55,8 +55,7 @@ run-client-valgrind: all
 clean:
 	$(RM) -r $(BUILD_DIR) *.aux *.log
 
-%.pdf: %.tex
-	pdflatex -halt-on-error $<
+
 
 release:
 	tar -czv -f tp2.tar.gz --transform 's|^|tp2/|' \

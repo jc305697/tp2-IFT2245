@@ -44,7 +44,6 @@ void st_signal (void);
 void *st_code (void *);
 //void st_create_and_start(st);
 void st_print_results (FILE *, bool);
-static void sigint_handler(int signum);
 void erreur(const char *message);
 
 

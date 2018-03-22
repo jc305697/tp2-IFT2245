@@ -1,35 +1,25 @@
 #define _XOPEN_SOURCE 700   /* So as to allow use of `fdopen` and `getline`.  */
 #include "server_thread.h"
-#include <netinet/in.h>
+//#include <netinet/in.h>
 #include <netdb.h>
 #include <strings.h>
 #include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
+//#include <stdio.h>
+//#include <stdlib.h>
 #include<pthread.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <signal.h>
 #include <time.h>
-#include <stdbool.h>
+//#include <stdbool.h>
 //debut code pris de fred
 #include "dyn_array.h"
 
-#include <errno.h>
+//#include <errno.h>
 //#include <malloc.h>
-#ifndef _DYN_ARRAY_H
-#define _DYN_ARRAY_H
-
-#include <stddef.h>
-
-struct array_t;
-struct array_t *new_array (size_t capacity);
-
-int push_back(struct array_t *array, struct Client *element);
-void delete_array (struct array_t *array);
 void flushmoica();
-#endif
+
 //fin premiere partie code de fred
 
 
@@ -508,6 +498,7 @@ static void sigint_handler(int signum){
   // Code terminaison.
   accepting_connections = 0;//je n'acccepte plus de connection
 }
+
 void st_init (){
   // Handle interrupt
 printf("Serveur dans le init \n");

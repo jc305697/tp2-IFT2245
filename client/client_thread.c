@@ -1,10 +1,10 @@
 /* This `define` tells unistd to define usleep and random.  */
 #define _XOPEN_SOURCE 500
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+//#include <stdio.h>
+//#include <stdlib.h>
+//#include <string.h>
+//#include <unistd.h>
 #include "client_thread.h"
 
 // Socket library
@@ -25,7 +25,6 @@ int *provisioned_resources = NULL;
 
 // Variable d'initialisation des threads clients.
 unsigned int count = 0;
-void flushmoica();
 
 // Variable du journal.
 // Nombre de requête acceptée (ACK reçus en réponse à REQ)
@@ -58,7 +57,9 @@ unsigned int request_sent = 0;
 int make_random(int max_resources){
     return rand() % (max_resources+1);
 }
-
+void flushmoica(){
+    fflush(stdout);
+}
 void
 send_request (int client_id, int request_id, int socket_fd,char* message) {
     FILE *socket_w = fdopen(socket_fd, "w");
@@ -145,9 +146,7 @@ int client_connect_server()
     return client_socket_fd;
 }
 
-void flushmoica(){
-    fflush(stdout);
-}
+
 
 void *
 ct_code (void *param)

@@ -1,8 +1,9 @@
-#include <stdlib.h>
-#include <string.h>
+//#include <stdlib.h>
+//#include <string.h>
 #include "client_thread.h"
-#include <stdio.h>
+//#include <stdio.h>
 #define _GNU_SOURCE
+
 int main (int argc, char *argv[])
 {
   if (argc < 5) {
@@ -56,7 +57,9 @@ int main (int argc, char *argv[])
 
   return EXIT_SUCCESS;
 }
-
+/*void flushmoica(){
+    fflush(stdout);
+}*/
 //TODO: Pas mettre chiffres fixes
 void send_config(int socket_fd){
     char temp[10];
@@ -105,3 +108,5 @@ bool wait_answer(int socket_fd){
     }
 
 }
+
+
