@@ -285,8 +285,6 @@ struct array_t_string *parseInputGetLine(char *input){
  /* if (token == NULL){
     return array;
   }*/
-
- 
   while(token != NULL){
   push_backString(array,token);
   token = strtok(NULL," ");
@@ -309,8 +307,15 @@ int attendBeg( socklen_t socket_len ){
       // attend le beg 
       socketFd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
     }
+
+    int retour = fcntl(socketFd,F_GETFL);
+    //printf("%s\n", );
+    fcntl(socketFd,F_SETFL,retour& ~O_NONBLOCK);
+
     
-    printf("Server accepted connexion from : %s \n", &thread_addr);
+   /* printf("Server accepted connexion from : %s \n", &thread_addr);
+    printf("%d\n",retour & O_NONBLOCK );
+    printf("%d\n",O_NONBLOCK );*/
     
     FILE *socket_r = fdopen (socketFd, "r");
     FILE *socket_w = fdopen (socketFd, "w");
@@ -323,6 +328,7 @@ int attendBeg( socklen_t socket_len ){
     if(getline(&args,&args_len,socket_r) == -1){
 
       printf("J'AI PAS REÇU UNE COMMANDE \n");
+      perror("getline");
       sendErreur("ERR mauvaise commande",socket_w);
      /* if (args){
         free(args);
