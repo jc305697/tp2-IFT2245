@@ -329,7 +329,7 @@ int attendBeg( socklen_t socket_len ){
       }*/
       fclose (socket_r);
       fclose (socket_w);
-      //continue;
+      continue;
 
     }else{//pas d'erreur avec getline 
       printf("Commande reçue \n");
