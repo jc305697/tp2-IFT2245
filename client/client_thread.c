@@ -103,6 +103,7 @@ exit(1);
     printf("%s \n", toReceive);
     */
     // TP2 TODO:END
+    fclose(socket_r);
 }
 
 //Basé sur https://www.thegeekstuff.com/2011/12/c-socket-programming/?utm_source=feedburner
@@ -154,7 +155,7 @@ ct_code (void *param)
     int client_socket_fd = client_connect_server();
     //Client connecté au serveur
 
-  client_thread *ct = (client_thread *) param;
+    client_thread *ct = (client_thread *) param;
 
     //Initialise le client
     char message[50]="INI";

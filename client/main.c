@@ -72,8 +72,9 @@ void send_config(int socket_fd){
     printf("VOICI CE QUE JE VEUX SEND %s \n",toSend);
     flushmoica();
     send_request(0,0,socket_fd,toSend);
-    
+    close(socket_fd);
     //Send le pro
+    socket_fd = client_connect_server();
     sprintf(toSend,"%s","PRO ");
     printf("JE SUIS RENDU AU PRO \n");
     char append[50];
@@ -85,6 +86,9 @@ void send_config(int socket_fd){
     }
     strcat(toSend, " \n");
     send_request(0,1,socket_fd,toSend);
+
+    close(socket_fd);
+
 }
 
 bool wait_answer(int socket_fd){

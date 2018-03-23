@@ -49,9 +49,14 @@ run-client: all
 run-server-valgrind: all
 	$(VALGRIND) $(BUILD_DIR)/tp2_server 2018
 
+run-server-gdb: all
+	gdb --args  $(BUILD_DIR)/tp2_server 2018
+
 run-client-valgrind: all
 	$(VALGRIND) $(BUILD_DIR)/tp2_client 2018 5 50   10 4 23 1 2 
 
+run-client-gdb: all
+	gdb --args  $(BUILD_DIR)/tp2_client 2018 5 50   10 4 23 1 2 
 clean:
 	$(RM) -r $(BUILD_DIR) *.aux *.log
 
