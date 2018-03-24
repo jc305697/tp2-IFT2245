@@ -26,8 +26,9 @@ int main (int argc, char *argv[])
   for (unsigned int i = 0; i < num_resources; i++)
     provisioned_resources[i] = atoi (argv[i + 4]);
   int socket_test = client_connect_server();
-  send_config(socket_test);
-  bool res = wait_answer(socket_test);
+ bool res = send_config(socket_test);
+  printf("send_config est termine\n");
+  //bool res = wait_answer(socket_test);
     if (res){
 
 
@@ -61,7 +62,8 @@ int main (int argc, char *argv[])
     fflush(stdout);
 }*/
 //TODO: Pas mettre chiffres fixes
-void send_config(int socket_fd){
+bool send_config(int socket_fd){
+    int retour;
     char temp[10];
     char beg[50] = "BEG ";
     sprintf(temp,"%d",num_resources); 
@@ -71,8 +73,11 @@ void send_config(int socket_fd){
 
     printf("VOICI CE QUE JE VEUX SEND %s \n",toSend);
     flushmoica();
-    send_request(0,0,socket_fd,toSend);
+    retour = send_request(0,0,socket_fd,toSend);
     close(socket_fd);
+    if (retour == 0 ){
+      return false;
+    }
     //Send le pro
     socket_fd = client_connect_server();
     sprintf(toSend,"%s","PRO ");
@@ -85,9 +90,16 @@ void send_config(int socket_fd){
         strcat(toSend, " ");
     }
     strcat(toSend, " \n");
-    send_request(0,1,socket_fd,toSend);
+    retour = send_request(0,1,socket_fd,toSend);
 
+    printf("close le socket \n");
     close(socket_fd);
+    if (retour == 0)
+    {
+      return  false;
+    }
+
+    return true;
 
 }
 
@@ -96,7 +108,7 @@ bool wait_answer(int socket_fd){
 
     char *args = NULL;
     size_t args_len = 0;
-    ssize_t cnt = getdelim(&args, &args_len, (int) ' ', socket_r);
+    ssize_t cnt = getline(&args, &args_len, socket_r);
     switch (cnt) {
         case -1:
             perror("Erreur réception client");

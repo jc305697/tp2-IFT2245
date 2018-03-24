@@ -60,9 +60,10 @@ int make_random(int max_resources){
 void flushmoica(){
     fflush(stdout);
 }
-void
+int 
 send_request (int client_id, int request_id, int socket_fd,char* message) {
     FILE *socket_w = fdopen(socket_fd, "w");
+    printf("va envoyer\n");
     fprintf(socket_w, "%s", message);
     fflush(socket_w);
     printf("Client sent %s \n", message);
@@ -103,7 +104,14 @@ exit(1);
     printf("%s \n", toReceive);
     */
     // TP2 TODO:END
+    printf("close le stream\n");
+    flushmoica();
     fclose(socket_r);
+    if (strcmp(args,"ACK")){
+        return 1;
+    }else{
+            return 0;
+    }
 }
 
 //Basé sur https://www.thegeekstuff.com/2011/12/c-socket-programming/?utm_source=feedburner
@@ -154,13 +162,13 @@ ct_code (void *param)
 {
     int client_socket_fd = client_connect_server();
     //Client connecté au serveur
-
+    printf("thread client a connecté\n");
     client_thread *ct = (client_thread *) param;
 
     //Initialise le client
     char message[50]="INI";
     char append[5];
-    sprintf(append,"%d",ct->id); // put the int into a string
+    sprintf(append," %d",ct->id); // put the int into a string
     strcat(message, append);
 
     memset(append, 0, sizeof append);
@@ -169,7 +177,7 @@ ct_code (void *param)
         //TODO: Vérifier si ce code segfault
         //TODO: Fetch le vrai nb max
         //snprintf(message, sizeof message, "%d", make_random(10));
-        sprintf(append,"%d",make_random(10)); // put the int into a string
+        sprintf(append," %d",make_random(10)); // put the int into a string
         strcat(message, append); // modified to append string
     }
     //Envoie la requête INI

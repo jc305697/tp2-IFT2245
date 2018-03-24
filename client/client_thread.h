@@ -29,8 +29,8 @@ struct client_thread
   pthread_attr_t pt_attr;
 };
 
-void send_request (int client_id, int request_id, int socket_fd,char* message);
-void send_config(int socket_fd);
+int send_request (int client_id, int request_id, int socket_fd,char* message);
+bool send_config(int socket_fd);
 bool wait_answer(int socket_test);
 int make_random(int max_resources);
 

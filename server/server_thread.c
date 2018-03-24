@@ -133,7 +133,7 @@ struct array_t_string *new_arrayString (size_t capacity) {
     newA->size = 0;
 
     //newA->data = malloc(capacity*sizeof(char**));
-    newA->data = malloc(capacity*sizeof(char*));
+    newA->data = malloc(capacity*sizeof(char *));
 
   if(!newA->data) {
     free(newA);
@@ -146,13 +146,14 @@ struct array_t_string *new_arrayString (size_t capacity) {
 int push_back(struct array_t *array, struct Client *element) {
   if (array->size > (array->capacity - 2)) {
     size_t newsize = array->capacity << 1;
-    struct Client *tmp = realloc(array->data, newsize*sizeof(struct Client*));
+    struct Client **tmp = (struct Client **)realloc(array->data, newsize*sizeof(struct Client*));
     if (!tmp) {
       errno = ENOMEM;
       return -1;
     }
     array->capacity = newsize;
-    array->data = &tmp;
+    //array->data = &tmp;
+    array->data = tmp;
   }
   array->data[array->size] = element;
   array->size++;
@@ -161,28 +162,29 @@ int push_back(struct array_t *array, struct Client *element) {
 
 int push_backString(struct array_t_string *array, char *element) {
   if (array->size > (array->capacity - 2)) {
-    	printf("realloue dans push_backString\n");
+    //printf("realloue dans push_backString\n");
     size_t newsize = array->capacity << 1;
-    printf("capacity augmenter dans push_backString\n");
-    char  *tmp = realloc(array->data, newsize*sizeof(char *));
-   ;
+    //printf("capacity augmenter dans push_backString\n");
+    char  **tmp = (char **)realloc(array->data, newsize*sizeof(char *));
+   
     if (!tmp) {
       perror("pushBackString");
       errno = ENOMEM;
       return -1;
     }
-    printf("realloc reussi dans push_backString\n");
+    //printf("realloc reussi dans push_backString\n");
     array->capacity = newsize;
-	printf("capacity mis a jour dans push_backString\n");   
-    array->data = &tmp;
-    printf(" array->data mis a jour dans push_backString\n"); 
+    //printf("capacity mis a jour dans push_backString\n");   
+    //array->data = &tmp;
+    array->data = tmp;
+    //printf(" array->data mis a jour dans push_backString\n"); 
   }
 
 
   array->data[array->size] = element;
-  printf("Ajouter element dans push_backString\n");
+  //printf("Ajouter element dans push_backString\n");
   array->size++;
-  printf(" size mis a jour dans push_backString\n");  
+  //printf(" size mis a jour dans push_backString\n");  
   return 0; 
 }
 
@@ -226,8 +228,11 @@ struct array_t deleteClientInArray(struct array_t *array, int clientTid){
 
 void sendErreur(const char *message, FILE *socket_w){
   //envoie au client le message d'erreur 
+  printf("va envoyé %s \n",message);
   fprintf (socket_w, "%s",message);
   fflush(socket_w);
+   printf("a envoyé %s \n",message);
+
   pthread_mutex_lock(&lockCouInvalid);
   count_invalid = count_invalid + 1;
   pthread_mutex_unlock(&lockCouInvalid); 
@@ -238,8 +243,10 @@ void sendErreur(const char *message, FILE *socket_w){
 }
 
 void sendWait(int temps,FILE *socket_w,struct Client client){
+ printf("va envoyé Wait\n");
  fprintf (socket_w, "Wait %d",temps);
  fflush(socket_w);
+ printf("va envoyé Wait\n");
 
  pthread_mutex_lock(&lockClientWait);
  push_back(&clientQuiWait,&client);
@@ -267,8 +274,10 @@ bool estDansListe(struct array_t *liste,int clientTid ){
 }
 
 void sendAck(FILE *socket_w, int clientTid){
+  printf("va envoyé ACK\n");
   fprintf (socket_w, "ACK \n");
   fflush(socket_w);
+  printf("a envoyé ACK\n");
   
   pthread_mutex_lock(&lockCountAccep);
   count_accepted = count_accepted + 1;
@@ -437,7 +446,8 @@ void attendBeg( socklen_t socket_len ){
          break;
        }
 
-     } else{
+     } 
+     else{
       sendErreur("ERR mauvais commande attend BEG",socket_w);
       free(args);
       delete_array_string(input);
@@ -446,8 +456,8 @@ void attendBeg( socklen_t socket_len ){
 
       //}
     } 
+     }
   }
-}
   return;
 }
 
@@ -536,6 +546,7 @@ void attendPro(socklen_t socket_len){
 
              if (longueur == nbRessources){
                bonneCommande = true;
+               sendAck(socket_w,-1);
                break;
              }
           }
@@ -554,6 +565,7 @@ void attendPro(socklen_t socket_len){
 
 static void sigint_handler(int signum){
   // Code terminaison.
+  printf("je recoois un signal d'interruption\n");
   accepting_connections = 0;//je n'acccepte plus de connection
 }
 
@@ -650,8 +662,9 @@ void st_init (){
   socklen_t socket_len = sizeof (thread_addr);
 
   attendBeg(socket_len);
-
+  printf("attendBeg fini\n");
   attendPro(socket_len);
+  printf("attendPro fini\n");
 
 
   // TODO
@@ -813,7 +826,7 @@ void st_process_requests (server_thread * st, int socket_fd){
 
   while (true){
     
-    char *args; size_t args_len = 0;
+    char *args = NULL; size_t args_len = 0;
     if(getline(&args,&args_len,socket_r) == -1){//lit ce que le client envoie 
       //getline renvoie que il y a une erreur 
       sendErreur("ERR mauvaise commande",socket_w);
@@ -1176,12 +1189,14 @@ void *st_code (void *param){
   server_thread *st = (server_thread *) param;
 
   int thread_socket_fd = -1;
-
+  printf("rentre dans stcode\n");
   // Boucle de traitement des requêtes.
   while (accepting_connections)
   {
     // Wait for a I/O socket.
+    printf("commence le wait\n");
     thread_socket_fd = st_wait();
+    printf("sort du wait\n");
     if (thread_socket_fd < 0)
     {
       fprintf (stderr, "Time out on thread %d.\n", st->id);//reesaye plus tard
@@ -1190,10 +1205,13 @@ void *st_code (void *param){
 
     if (thread_socket_fd > 0)//si j'ai eu une requete
     {
+      printf("va rentrer dans st_process_requests\n");
       st_process_requests (st, thread_socket_fd);
+      printf("est sorti de st_process_requests\n");
       close (thread_socket_fd);
     }
   }
+  printf("fin de st_code\n");
   return NULL;
 }
 
