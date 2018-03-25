@@ -21,6 +21,7 @@ int main (int argc, char *argv[])
   int num_clients = atoi (argv[2]);
   num_request_per_client = atoi (argv[3]);
     num_resources = argc - 4;
+    printf("nombre de ressources = %d\n",num_resources );
 
   provisioned_resources = malloc (num_resources * sizeof (int));
   for (unsigned int i = 0; i < num_resources; i++)

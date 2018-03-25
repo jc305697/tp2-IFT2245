@@ -55,7 +55,7 @@ unsigned int request_sent = 0;
 //https://www.tutorialspoint.com/c_standard_library/c_function_rand.htm
 //Voir https://wiki.sei.cmu.edu/confluence/display/c/MSC30-C.+Do+not+use+the+rand%28%29+function+for+generating+pseudorandom+numbers
 int make_random(int max_resources){
-    return rand() % (max_resources+1);
+    return rand() % (max_resources+1);// fait + 1 pour povoir demander le maximum d'une ressource
 }
 void flushmoica(){
     fflush(stdout);
@@ -70,10 +70,10 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
     
     FILE *socket_r = fdopen(socket_fd, "r");
     char* args; // = (char*) malloc (10*sizeof(char));
-if (args==NULL){
-perror("Buffer marche po");
-exit(1);
-}
+	/*if (args==NULL){
+		perror("Buffer marche po");
+		exit(1);
+	}*/
 
     size_t args_len = 0;
     
@@ -173,17 +173,18 @@ ct_code (void *param)
 
     memset(append, 0, sizeof append);
     //Choisit valeurs max de façon random
+    printf("nombre de ressource = %d\n",num_resources);
     for (int i =0; i < num_resources;i++){
         //TODO: Vérifier si ce code segfault
         //TODO: Fetch le vrai nb max
         //snprintf(message, sizeof message, "%d", make_random(10));
-        sprintf(append," %d",make_random(10)); // put the int into a string
+        sprintf(append," %d",make_random(provisioned_resources[i])); // put the int into a string
         strcat(message, append); // modified to append string
     }
     //Envoie la requête INI
     send_request(ct->id,-1,client_socket_fd,message);
 
-    printf("Waiting on server response (expecting an ACK");
+    printf("Waiting on server response (expecting an ACK\n");
 
   for (unsigned int request_id = 0; request_id < num_request_per_client;
       request_id++)
