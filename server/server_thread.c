@@ -852,6 +852,8 @@ void st_process_requests (server_thread * st, int socket_fd){
     struct array_t_string *input= parseInputGetLine(args);
     imprimeArrayString(input);
     
+    printf("commence les comparaisons\n");
+    fflush(stdout);
     if(strcmp(input->data[0],"END") == 0){
       //free(cmd);
       //ma commande est end 
@@ -866,6 +868,7 @@ void st_process_requests (server_thread * st, int socket_fd){
     }
 
     if( strcmp(input->data[0],"INI") == 0){
+        printf("rentre dans INI\n");
         //free(cmd);
         int *ressourcestemp = calloc(nbRessources, sizeof(int));
 
@@ -880,10 +883,11 @@ void st_process_requests (server_thread * st, int socket_fd){
         int longueur = 2;
 
         while(longueur != input->size){
+          printf("itère sur les arguments\n");
          
           int  valeur = atoi(input->data[longueur]);
 
-          if ( valeur == 0 && strcmp(args,"0") != 0){
+          if ( valeur == 0 && strcmp(input->data[longueur],"0") != 0){
             sendErreur("ERR erreur une valeur n'est pas un int",socket_w);
             free(ressourcestemp);
             free(args);
@@ -900,6 +904,7 @@ void st_process_requests (server_thread * st, int socket_fd){
           }
 
           else{
+            printf("pas d'erreur sur l'argument\n");
            ressourcestemp[longueur-2] = valeur;
            longueur = longueur + 1;
          }           
@@ -925,6 +930,7 @@ void st_process_requests (server_thread * st, int socket_fd){
             maxTemp[i] = max[i];
           }*/
 
+       printf("pas de probleme avec les arguments\n");
        struct Client nouvClient = {tidClient,ressourcestemp};
         //maxTemp[nb_registered_clients + 1] = nouvClient; 
        pthread_mutex_lock(&lockMax);

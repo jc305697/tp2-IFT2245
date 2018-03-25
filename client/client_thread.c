@@ -57,9 +57,11 @@ unsigned int request_sent = 0;
 int make_random(int max_resources){
     return rand() % (max_resources+1);// fait + 1 pour povoir demander le maximum d'une ressource
 }
+
 void flushmoica(){
     fflush(stdout);
 }
+
 int 
 send_request (int client_id, int request_id, int socket_fd,char* message) {
     FILE *socket_w = fdopen(socket_fd, "w");
@@ -67,6 +69,7 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
     fprintf(socket_w, "%s", message);
     fflush(socket_w);
     printf("Client sent %s \n", message);
+    
     
     FILE *socket_r = fdopen(socket_fd, "r");
     char* args; // = (char*) malloc (10*sizeof(char));
@@ -82,8 +85,10 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
     switch (cnt) {
         case -1:
             perror("Erreur réception client \n");
+            return 0;
             break;
         default:
+
             break;
     }
     printf("Ce que client a reçu %s \n", args);
@@ -106,6 +111,7 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
     // TP2 TODO:END
     printf("close le stream\n");
     flushmoica();
+    fclose(socket_w);
     fclose(socket_r);
     if (strcmp(args,"ACK")){
         return 1;
@@ -115,8 +121,7 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
 }
 
 //Basé sur https://www.thegeekstuff.com/2011/12/c-socket-programming/?utm_source=feedburner
-int client_connect_server()
-{
+int client_connect_server(){
     printf("Un client essaie de créer un socket \n");
     int client_socket_fd=-1;
 
@@ -157,9 +162,7 @@ int client_connect_server()
 
 
 
-void *
-ct_code (void *param)
-{
+void * ct_code (void *param){
     int client_socket_fd = client_connect_server();
     //Client connecté au serveur
     printf("thread client a connecté\n");
@@ -182,13 +185,26 @@ ct_code (void *param)
         strcat(message, append); // modified to append string
     }
     //Envoie la requête INI
-    send_request(ct->id,-1,client_socket_fd,message);
+    int retour= send_request(ct->id,-1,client_socket_fd,message);
+    if (retour == 0){
+    	printf("pas reçu ACK\n");
+    	fflush(stdout);
+    }
 
-    printf("Waiting on server response (expecting an ACK\n");
+    else{
+    	printf("reçu ACK\n");
+    	fflush(stdout);
+    }
+    printf("recçu %d\n",retour);
+    fflush(stdout);
+
+  //  shutdown(client_socket_fd, SHUT_RDWR);
+    close(client_socket_fd);
+
+   // printf("Waiting on server response (expecting an ACK\n");
 
   for (unsigned int request_id = 0; request_id < num_request_per_client;
-      request_id++)
-  {
+      request_id++){
 
       // TP2 TODO
       // Vous devez ici coder, conjointement avec le corps de send request,
@@ -209,8 +225,8 @@ ct_code (void *param)
     count_dispatched++;
 
     //https://stackoverflow.com/questions/4160347/close-vs-shutdown-socket
-  shutdown(client_socket_fd, SHUT_RDWR);
-  close(client_socket_fd);
+ /* shutdown(client_socket_fd, SHUT_RDWR);
+  close(client_socket_fd);*/
   return NULL;
 }
 
@@ -221,9 +237,7 @@ ct_code (void *param)
 // Le client doit attendre que le serveur termine le traitement de chacune
 // de ses requêtes avant de terminer l'exécution.
 //
-void
-ct_wait_server ()
-{
+void ct_wait_server (){
 
   // TP2 TODO: IMPORTANT code non valide.
 
@@ -234,15 +248,12 @@ ct_wait_server ()
 }
 
 
-void
-ct_init (client_thread * ct)
+void ct_init (client_thread * ct)
 {
   ct->id = count++;
 }
 
-void
-ct_create_and_start (client_thread * ct)
-{
+void ct_create_and_start (client_thread * ct){
   pthread_attr_init (&(ct->pt_attr));
   pthread_create (&(ct->pt_tid), &(ct->pt_attr), &ct_code, ct);
   pthread_detach (ct->pt_tid);
@@ -253,9 +264,7 @@ ct_create_and_start (client_thread * ct)
 // serveur.
 // La branche else ne doit PAS être modifiée.
 //
-void
-st_print_results (FILE * fd, bool verbose)
-{
+void st_print_results (FILE * fd, bool verbose){
   if (fd == NULL)
     fd = stdout;
   if (verbose)
