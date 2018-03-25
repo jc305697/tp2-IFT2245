@@ -91,6 +91,16 @@ int make_random(int max_resources){
     return rand() % (max_resources+1);// fait + 1 pour povoir demander le maximum d'une ressource
 }
 
+int make_random_req(int max_resources){
+	int nombre = make_random(make_random);
+	if (((double)rand() / (double)RAND_MAX) < 0.5)//code pris de https://stackoverflow.com/questions/6218399/how-to-generate-a-random-number-between-0-and-1
+	{
+		return nombre * -1;
+	}
+
+	return nombre;
+}
+
 void flushmoica(){
     fflush(stdout);
 }
@@ -114,7 +124,9 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
     size_t args_len = 0;
     
     printf("Client waiting for response..\n");
+
     ssize_t cnt = getline(&args, &args_len, socket_r);
+    printf("Ce que client a reçu %s \n", args);
     switch (cnt) {
         case -1:
             perror("Erreur réception client \n");
@@ -124,7 +136,7 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
 
             break;
     }
-    printf("Ce que client a reçu %s \n", args);
+   
     /*
     char toReceive[20];
     memset (toReceive,'0', 20);
@@ -212,7 +224,7 @@ int client_connect_server(){
 
 
 void * ct_code (void *param){
-    int client_socket_fd = client_connect_server();
+    int client_socket_fd = client_connect_server();é
     //Client connecté au serveur
     printf("thread client a connecté\n");
     client_thread *ct = (client_thread *) param;
@@ -259,6 +271,8 @@ void * ct_code (void *param){
       // Vous devez ici coder, conjointement avec le corps de send request,
       // le protocole d'envoi de requête.
 
+
+  	//TODO: analyser les erreurs retourné s'il y en a et faire clo a la fin des requetes 	
       send_request (ct->id, request_id, client_socket_fd,message);
 
       // TP2 TODO:END
@@ -271,6 +285,8 @@ void * ct_code (void *param){
        * nanosleep (&delay, NULL); */
 
   }
+
+
     count_dispatched++;
 
     //https://stackoverflow.com/questions/4160347/close-vs-shutdown-socket

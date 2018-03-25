@@ -1088,6 +1088,7 @@ void st_process_requests (server_thread * st, int socket_fd){
 
 
       if (assezRessPourMax == nbRessources){
+       
         for (int i = 0; i < nbRessources; ++i){
          ressAllouerClient[i] = ressAllouerClient[i] + ressourcesDem[i];
          ressourcesLibres[i] =  ressourcesLibres[i] - ressBesoinClient[i];
@@ -1135,7 +1136,7 @@ void st_process_requests (server_thread * st, int socket_fd){
       pthread_mutex_lock(&lockAllouer);
       int positionAllouer = 0;
 
-      while(positionAllouer!= (allouer.size - 1) ){
+      while(positionAllouer!= (allouer.size - 1) ){//je cherche la position du client concerné dans l'array
         if ((*allouer.data)[positionAllouer].tid == tidClient){
           break;
         }
@@ -1151,18 +1152,18 @@ void st_process_requests (server_thread * st, int socket_fd){
 
       pthread_mutex_lock(&lockResLibres);
       int ressource = 0;
-      while(ressource != nbRessources){
+      while(ressource != nbRessources){//je rajoute les ressources allouer aux ressources lbres
         ressourcesLibres[ressource] += (*allouer.data)[positionAllouer].ressClient[ressource];
       }
       pthread_mutex_unlock(&lockResLibres);
       allouer = deleteClientInArray(&allouer,tidClient);
       pthread_mutex_unlock(&lockAllouer);
-      printf("va unlock le tableau des besoins\n");
+      //printf("va unlock le tableau des besoins\n");
       pthread_mutex_lock(&lockBesoin);
 
       int positionBesoin = 0;
 
-      while(positionBesoin!= (besoin.size - 1) ){
+    /*  while(positionBesoin!= (besoin.size - 1) ){//je cherche aussi le client
         if (besoin.data[positionBesoin]->tid == tidClient){
           break;
         }
@@ -1172,15 +1173,15 @@ void st_process_requests (server_thread * st, int socket_fd){
 
       if (positionAllouer == nbRessources){
         sendErreur("ERR le client n'a pas ete initiliase",socket_w);   
-        pthread_mutex_unlock(&lockAllouer);
+        pthread_mutex_unlock(&besoin);
         break;
-      }
+      }*/
 
-      besoin = deleteClientInArray(&allouer,tidClient);
+      besoin = deleteClientInArray(&besoin,tidClient);
 
-      pthread_mutex_unlock(&lockAllouer);
+      pthread_mutex_unlock(&lockBesoin);
 
-      pthread_mutex_unlock(&lockMax);
+      pthread_mutex_lock(&lockMax);
 
       max = deleteClientInArray(&max,tidClient);
 
