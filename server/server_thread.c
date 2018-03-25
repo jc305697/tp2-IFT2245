@@ -288,6 +288,7 @@ void sendAck(FILE *socket_w, int clientTid){
   fprintf (socket_w, "ACK \n");
   fflush(socket_w);
   printf("a envoyé ACK\n");
+  printf("\n" );
   
   pthread_mutex_lock(&lockCountAccep);
   count_accepted = count_accepted + 1;
@@ -334,7 +335,7 @@ struct array_t_string *parseInputGetLine(char *input){
   int i =0;
 
   while(token != NULL){
-  	printf("ajoute a l'array iteration %d\n",i );
+  	//printf("ajoute a l'array iteration %d\n",i );
   	if(push_backString(array,token)==-1){
   		perror("parseinputgetline");
   	}
@@ -883,7 +884,7 @@ void st_process_requests (server_thread * st, int socket_fd){
         int longueur = 2;
 
         while(longueur != input->size){
-          printf("itère sur les arguments\n");
+          //printf("itère sur les arguments\n");
          
           int  valeur = atoi(input->data[longueur]);
 
@@ -904,7 +905,7 @@ void st_process_requests (server_thread * st, int socket_fd){
           }
 
           else{
-            printf("pas d'erreur sur l'argument\n");
+          //  printf("pas d'erreur sur l'argument\n");
            ressourcestemp[longueur-2] = valeur;
            longueur = longueur + 1;
          }           
@@ -912,8 +913,8 @@ void st_process_requests (server_thread * st, int socket_fd){
 
        if (longueur-2 != nbRessources){//les ressoruces n'ont pas tous été déclaré
          
-          printf("longueur = %d\n",longueur);
-          printf("nbRessources = %d\n",longueur);
+          //printf("longueur = %d\n",longueur);
+         // printf("nbRessources = %d\n",longueur);
           sendErreur("ERR mauvais nombre de ressources specifier",socket_w);
           free(ressourcestemp);
           delete_array_string(input);
@@ -930,11 +931,13 @@ void st_process_requests (server_thread * st, int socket_fd){
             maxTemp[i] = max[i];
           }*/
 
-       printf("pas de probleme avec les arguments\n");
+      // printf("pas de probleme avec les arguments\n");
        struct Client nouvClient = {tidClient,ressourcestemp};
         //maxTemp[nb_registered_clients + 1] = nouvClient; 
+       printf("va prendre le lock du max\n");
        pthread_mutex_lock(&lockMax);
-       int retour1 = push_back(&max,&nouvClient);
+       printf("va push dans le max le nouveau client\n");
+       int retour1 = push_back(&max,&nouvClient);//met le client dans l'array max
        
        if (retour1 == -1){
         sendErreur("ERR erreur interne",socket_w);
@@ -946,29 +949,36 @@ void st_process_requests (server_thread * st, int socket_fd){
        // pthread_mutex_unlock(&lockMax);
         break;
        }
-
+       printf("unlock le max\n");
        pthread_mutex_unlock(&lockMax);
           //struct array_t besoinTemp = new_array(max.capacity);
 
        int *besoinTemp = calloc(nbRessources,sizeof(int));
-
+       printf("va initialiser le tableau des besoins\n");
        for (int i = 0; i < nbRessources; ++i){
          besoinTemp[i] = ressourcestemp[i]; //initialise le tableau des besoins 
        }                                     //le client a besoin du maximum
           //free(max);
          // max = maxTemp;
+       printf("va lock le talbeau des besoins\n");
+       struct Client nouvClientBesoin = {tidClient,besoinTemp};
        pthread_mutex_lock(&lockBesoin);
-       retour1 = push_back(&max,&nouvClient);
+       retour1 = push_back(&besoin,&nouvClientBesoin);
        if (retour1 == -1){
          sendErreur("ERR erreur interne",socket_w);
+         printf("va unlock le tableau des besoins\n");
          pthread_mutex_unlock(&lockBesoin);
             //pthread_mutex_unlock(&lockNbClient);
+         printf("va liberer ressouces temp\n");
          free(ressourcestemp);
          break;
        }
+       pthread_mutex_unlock(&lockBesoin);
+       printf("met a jour le nombre de client\n");
        pthread_mutex_lock(&lockNbClient);
        nb_registered_clients = nb_registered_clients + 1;  //j'ai un client de plus 
        pthread_mutex_unlock(&lockNbClient);
+       printf("envoie un ack\n");
        sendAck(socket_w,tidClient);
        break;
     }
@@ -1009,7 +1019,7 @@ void st_process_requests (server_thread * st, int socket_fd){
           free(args);
           break;
        }
-
+      printf("va unlock le tableau des besoins\n");
       pthread_mutex_lock(&lockBesoin);
 
       int j = 0;
@@ -1024,6 +1034,7 @@ void st_process_requests (server_thread * st, int socket_fd){
 
       if (j==nbRessources){
         sendErreur("ERR le client n'a pas ete initiliase",socket_w);   
+        printf("va unlock le tableau des besoins\n");
         pthread_mutex_unlock(&lockBesoin);
         free(ressourcesDem);
         break;
@@ -1042,6 +1053,7 @@ void st_process_requests (server_thread * st, int socket_fd){
           sendWait(max_wait_time,socket_w,*max.data[j]);
           free(ressourcesDem);
           pthread_mutex_unlock(&lockResLibres); 
+          printf("va unlock le tableau des besoins\n");
           pthread_mutex_unlock(&lockBesoin);
           delete_array_string(input);
           free(args);
@@ -1054,6 +1066,7 @@ void st_process_requests (server_thread * st, int socket_fd){
           sendErreur("ERR client demande plus de ressources que le max declarer dans ini",socket_w);
           
           pthread_mutex_unlock(&lockResLibres); 
+          printf("va unlock le tableau des besoins\n");
           pthread_mutex_unlock(&lockBesoin);
           free(ressourcesDem);
           delete_array_string(input);
@@ -1095,6 +1108,7 @@ void st_process_requests (server_thread * st, int socket_fd){
 
       pthread_mutex_unlock(&lockAllouer);
       pthread_mutex_unlock(&lockResLibres); 
+      printf("va unlock le tableau des besoins\n");
       pthread_mutex_unlock(&lockBesoin);
       free(ressourcesDem);
       delete_array_string(input);
@@ -1143,7 +1157,7 @@ void st_process_requests (server_thread * st, int socket_fd){
       pthread_mutex_unlock(&lockResLibres);
       allouer = deleteClientInArray(&allouer,tidClient);
       pthread_mutex_unlock(&lockAllouer);
-
+      printf("va unlock le tableau des besoins\n");
       pthread_mutex_lock(&lockBesoin);
 
       int positionBesoin = 0;
@@ -1231,8 +1245,10 @@ void *st_code (void *param){
     if (thread_socket_fd > 0)//si j'ai eu une requete
     {
       printf("va rentrer dans st_process_requests\n");
+      printf("\n");
       st_process_requests (st, thread_socket_fd);
       printf("est sorti de st_process_requests\n");
+      printf("\n");
       close (thread_socket_fd);
     }
   }

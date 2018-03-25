@@ -41,6 +41,13 @@ unsigned int count_dispatched = 0;
 
 // Nombre total de requêtes envoyées.
 unsigned int request_sent = 0;
+pthread_mutex_t lockCount_acc;
+pthread_mutex_t lockCount_wait;
+pthread_mutex_t lockCount_inv;
+pthread_mutex_t lockCount_disp;
+
+
+
 //https://www.geeksforgeeks.org/socket-programming-cc/
 //Basé sur https://www.thegeekstuff.com/2011/12/c-socket-programming/?utm_source=feedburner
 
@@ -54,6 +61,32 @@ unsigned int request_sent = 0;
 //Génère nombre aléatoire entre 0 et max
 //https://www.tutorialspoint.com/c_standard_library/c_function_rand.htm
 //Voir https://wiki.sei.cmu.edu/confluence/display/c/MSC30-C.+Do+not+use+the+rand%28%29+function+for+generating+pseudorandom+numbers
+
+void ct_start(){
+	int retour;
+	retour = pthread_mutex_init(&lockCount_acc,NULL);
+	if (retour != 0){
+		perror("Erreur init mutex pour nombre de ack (nombre de commande executer)");
+	}
+
+	retour = pthread_mutex_init(&lockCount_wait,NULL);
+	if (retour != 0){
+		perror("Erreur init mutex pour nombre de wait ");
+	}
+
+	retour = pthread_mutex_init(&lockCount_inv,NULL);
+	if (retour != 0){
+		perror("Erreur init mutex pour nombre de requete invalide");
+	}
+
+	retour = pthread_mutex_init(&lockCount_disp,NULL);
+	if (retour != 0){
+		perror("Erreur init mutex pour nombre de client terminé");
+	}
+
+}
+
+
 int make_random(int max_resources){
     return rand() % (max_resources+1);// fait + 1 pour povoir demander le maximum d'une ressource
 }
@@ -114,10 +147,26 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
     fclose(socket_w);
     fclose(socket_r);
     if (strcmp(args,"ACK")){
+        pthread_mutex_lock(&lockCount_acc);
+        count_accepted += 1;
+        pthread_mutex_unlock(&lockCount_acc);
         return 1;
     }else{
-            return 0;
+    	if (strstr(args,"ERR")!=NULL){
+    		pthread_mutex_lock(&lockCount_inv);
+        	count_invalid += 1;
+        	pthread_mutex_unlock(&lockCount_inv);
+    	}
+
+    	else if(strstr(args,"WAIT")){
+            pthread_mutex_lock(&lockCount_wait);
+        	count_on_wait += 1;
+        	pthread_mutex_unlock(&lockCount_wait);
+    	}
+
+    	return 0;
     }
+    //return 0;
 }
 
 //Basé sur https://www.thegeekstuff.com/2011/12/c-socket-programming/?utm_source=feedburner

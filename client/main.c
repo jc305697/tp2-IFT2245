@@ -27,7 +27,8 @@ int main (int argc, char *argv[])
   for (unsigned int i = 0; i < num_resources; i++)
     provisioned_resources[i] = atoi (argv[i + 4]);
   int socket_test = client_connect_server();
- bool res = send_config(socket_test);
+  ct_start();
+  bool res = send_config(socket_test);
   printf("send_config est termine\n");
   //bool res = wait_answer(socket_test);
     if (res){

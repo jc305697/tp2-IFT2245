@@ -33,6 +33,7 @@ int send_request (int client_id, int request_id, int socket_fd,char* message);
 bool send_config(int socket_fd);
 bool wait_answer(int socket_test);
 int make_random(int max_resources);
+void ct_start();
 
 void ct_open_socket();
 int client_connect_server();
