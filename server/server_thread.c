@@ -840,6 +840,7 @@ void st_process_requests (server_thread * st, int socket_fd){
   while (true){
     
     char *args = NULL; size_t args_len = 0;
+    printf("va lire la ligne\n");
     if(getline(&args,&args_len,socket_r) == -1){//lit ce que le client envoie 
       //getline renvoie que il y a une erreur 
       sendErreur("ERR mauvaise commande",socket_w);
@@ -849,7 +850,7 @@ void st_process_requests (server_thread * st, int socket_fd){
       }
       break;
     }
-
+    printf("va parser l'input\n");
     struct array_t_string *input= parseInputGetLine(args);
     imprimeArrayString(input);
     

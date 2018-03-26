@@ -18,7 +18,8 @@ int main (int argc, char *argv[])
         //TODO: Creer les mini INIT
         //TODO:
   port_number = atoi (argv[1]);
-  int num_clients = atoi (argv[2]);
+  //int num_clients = atoi (argv[2]);
+  num_clients = atoi (argv[2]);
   num_request_per_client = atoi (argv[3]);
     num_resources = argc - 4;
     printf("nombre de ressources = %d\n",num_resources );

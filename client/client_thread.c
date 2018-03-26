@@ -19,6 +19,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 int port_number = -1;
+int num_clients = 0;
 int num_request_per_client = -1;
 int num_resources = -1;
 int *provisioned_resources = NULL;
@@ -37,14 +38,20 @@ unsigned int count_on_wait = 0;
 unsigned int count_invalid = 0;
 
 // Nombre de client qui se sont terminés correctement (ACC reçu en réponse à END)
-unsigned int count_dispatched = 0;
+unsigned int count_dispatched = 0;                      //ACK reçu en réponse à CLO plutot?
 
 // Nombre total de requêtes envoyées.
 unsigned int request_sent = 0;
+
+//bool *finClient;
+ 
+
 pthread_mutex_t lockCount_acc;
 pthread_mutex_t lockCount_wait;
 pthread_mutex_t lockCount_inv;
 pthread_mutex_t lockCount_disp;
+pthread_mutex_t lockReqSent;
+//pthread_mutex_t lockFinClient;
 
 
 
@@ -79,6 +86,18 @@ void ct_start(){
 		perror("Erreur init mutex pour nombre de requete invalide");
 	}
 
+	retour = pthread_mutex_init(&lockReqSent,NULL);
+	if (retour != 0){
+		perror("Erreur init mutex pour nombre requêtes envoyées");
+	}
+
+	/*finClient = calloc(num_clients,sizeof(bool));
+
+	retour = pthread_mutex_init(&lockFinClient,NULL);
+	if (retour != 0){
+		perror("Erreur init mutex pour nombre de client terminé");
+	}*/
+
 	retour = pthread_mutex_init(&lockCount_disp,NULL);
 	if (retour != 0){
 		perror("Erreur init mutex pour nombre de client terminé");
@@ -92,7 +111,7 @@ int make_random(int max_resources){
 }
 
 int make_random_req(int max_resources){
-	int nombre = make_random(make_random);
+	int nombre = make_random(max_resources);
 	if (((double)rand() / (double)RAND_MAX) < 0.5)//code pris de https://stackoverflow.com/questions/6218399/how-to-generate-a-random-number-between-0-and-1
 	{
 		return nombre * -1;
@@ -224,7 +243,7 @@ int client_connect_server(){
 
 
 void * ct_code (void *param){
-    int client_socket_fd = client_connect_server();é
+    int client_socket_fd = client_connect_server();
     //Client connecté au serveur
     printf("thread client a connecté\n");
     client_thread *ct = (client_thread *) param;
@@ -256,7 +275,7 @@ void * ct_code (void *param){
     	printf("reçu ACK\n");
     	fflush(stdout);
     }
-    printf("recçu %d\n",retour);
+    printf("reçu %d\n",retour);
     fflush(stdout);
 
   //  shutdown(client_socket_fd, SHUT_RDWR);
@@ -266,6 +285,32 @@ void * ct_code (void *param){
 
   for (unsigned int request_id = 0; request_id < num_request_per_client;
       request_id++){
+  		client_socket_fd = client_connect_server() ;
+  		char message1[50]  = "REQ";
+  		char append1[5]; 
+  		sprintf(append1," %d",ct->id);
+  		strcat(message1,append1);
+
+  		for (int i = 0; i < count; ++i){
+  			sprintf(append," %d",make_random_req(provisioned_resources[i])); 
+        	strcat(message, append);
+  		}
+  		retour = send_request (ct->id, request_id, client_socket_fd,message);
+  		//int retour= send_request(ct->id,-1,client_socket_fd,message);
+    	
+    	if (retour == 0){
+	    	printf("pas reçu ACK\n");
+	    	fflush(stdout);
+   		 }
+
+    	else{
+	    	printf("reçu ACK\n");
+	    	fflush(stdout);
+    	}
+    	close(client_socket_fd);
+
+	    //printf("reçu %d\n",retour);
+	    //fflush(stdout);
 
       // TP2 TODO
       // Vous devez ici coder, conjointement avec le corps de send request,
@@ -273,7 +318,7 @@ void * ct_code (void *param){
 
 
   	//TODO: analyser les erreurs retourné s'il y en a et faire clo a la fin des requetes 	
-      send_request (ct->id, request_id, client_socket_fd,message);
+      
 
       // TP2 TODO:END
 
@@ -286,12 +331,39 @@ void * ct_code (void *param){
 
   }
 
+  client_socket_fd = client_connect_server();
+  char message1[50]  = "CLO";
+  char append1[5]; 
+  sprintf(append1," %d",ct->id);
+  strcat(message1,append1);
+  retour = send_request (ct->id, num_request_per_client, client_socket_fd,message);
 
-    count_dispatched++;
+  if(retour == 0){
+		printf("pas reçu ACK\n");
+	    fflush(stdout);
+   }
+
+  else{
+    	printf("reçu ACK\n");
+   		fflush(stdout);
+   		pthread_mutex_lock(&lockCount_disp);
+   		count_dispatched++;
+   		//pthread_mutex_lock(&lockFinClient);
+
+  		//finClient[count_dispatched-1]= true;
+  		//pthread_mutex_unlock(&lockFinClient);
+   		pthread_mutex_unlock(&lockCount_disp);
+   }
+
+  close(client_socket_fd);
+
+  
+   // count_dispatched++;
 
     //https://stackoverflow.com/questions/4160347/close-vs-shutdown-socket
  /* shutdown(client_socket_fd, SHUT_RDWR);
   close(client_socket_fd);*/
+
   return NULL;
 }
 
@@ -306,7 +378,8 @@ void ct_wait_server (){
 
   // TP2 TODO: IMPORTANT code non valide.
 
-  sleep (4);
+  //sleep (4);
+  while(count_dispatched != num_clients);
 
   // TP2 TODO:END
 
