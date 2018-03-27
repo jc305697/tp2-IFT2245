@@ -53,22 +53,12 @@ pthread_mutex_t lockCount_disp;
 pthread_mutex_t lockReqSent;
 //pthread_mutex_t lockFinClient;
 
-
-
-//https://www.geeksforgeeks.org/socket-programming-cc/
-//Basé sur https://www.thegeekstuff.com/2011/12/c-socket-programming/?utm_source=feedburner
-
 // Vous devez modifier cette fonction pour faire l'envoie des requêtes
 // Les ressources demandées par la requête doivent être choisies aléatoirement
 // (sans dépasser le maximum pour le client). Elles peuvent être positives
 // ou négatives.
 // Assurez-vous que la dernière requête d'un client libère toute les ressources
 // qu'il a jusqu'alors accumulées.
-
-//Génère nombre aléatoire entre 0 et max
-//https://www.tutorialspoint.com/c_standard_library/c_function_rand.htm
-//Voir https://wiki.sei.cmu.edu/confluence/display/c/MSC30-C.+Do+not+use+the+rand%28%29+function+for+generating+pseudorandom+numbers
-
 void ct_start(){
 	int retour;
 	retour = pthread_mutex_init(&lockCount_acc,NULL);
