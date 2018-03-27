@@ -1001,7 +1001,7 @@ printf("Server a recu : %s du client %d \n",args,socket_fd);
 
       int j = 0;
 
-      while(j!= nbRessources){
+      while(j!= besoin.size){
         if ((*besoin.data)[j].tid == tidClient){
           break;
         }
