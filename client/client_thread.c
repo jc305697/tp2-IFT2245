@@ -126,11 +126,11 @@ void flushmoica(){
 
 int 
 send_request (int client_id, int request_id, int socket_fd,char* message) {
+    printf("Client %d attempting to send %s \n",socket_fd,message);
     FILE *socket_w = fdopen(socket_fd, "w");
-    printf("va envoyer\n");
     fprintf(socket_w, "%s", message);
     fflush(socket_w);
-    printf("Client sent %s \n", message);
+    //printf("Message sent \n");
     
     
     FILE *socket_r = fdopen(socket_fd, "r");
@@ -142,10 +142,10 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
 
     size_t args_len = 0;
     
-    printf("Client waiting for response..\n");
+    printf("Client %d waiting for response..\n", socket_fd);
 
     ssize_t cnt = getline(&args, &args_len, socket_r);
-    printf("Ce que client a reçu %s \n", args);
+    printf("Client %d received %s \n", socket_fd, args);
     switch (cnt) {
         case -1:
             perror("Erreur réception client \n");
@@ -173,7 +173,7 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
     printf("%s \n", toReceive);
     */
     // TP2 TODO:END
-    printf("close le stream\n");
+    printf("Client %d close le stream \n", socket_fd);
     flushmoica();
     fclose(socket_w);
     fclose(socket_r);
@@ -227,14 +227,14 @@ int client_connect_server(){
     //Padding nécessaire posix
     memset (server_address.sin_zero, 0, sizeof (server_address.sin_zero));
     
-    printf("** Client désire se connecter ** \n");
-    flushmoica();
+    printf("** Client %d désire se connecter ** \n", client_socket_fd);
+    //flushmoica();
 
     if (connect(client_socket_fd,(struct sockaddr *) &server_address, sizeof(server_address)) < 0 ){
         perror("ERROR connexion");
         return client_socket_fd;
     };
-    printf("+_+ Client est connecté au serveur +_+ \n");
+    printf("+_+ Client %d est connecté au serveur +_+ \n", client_socket_fd);
     flushmoica();
 
     return client_socket_fd;
@@ -244,8 +244,6 @@ int client_connect_server(){
 
 void * ct_code (void *param){
     int client_socket_fd = client_connect_server();
-    //Client connecté au serveur
-    printf("thread client a connecté\n");
     client_thread *ct = (client_thread *) param;
 
     //Initialise le client
@@ -256,10 +254,9 @@ void * ct_code (void *param){
 
     memset(append, 0, sizeof append);
     //Choisit valeurs max de façon random
-    printf("nombre de ressource = %d\n",num_resources);
+    //printf("nombre de ressource = %d\n",num_resources);
     for (int i =0; i < num_resources;i++){
         //TODO: Vérifier si ce code segfault
-        //TODO: Fetch le vrai nb max
         //snprintf(message, sizeof message, "%d", make_random(10));
         sprintf(append," %d",make_random(provisioned_resources[i])); // put the int into a string
         strcat(message, append); // modified to append string
@@ -267,25 +264,21 @@ void * ct_code (void *param){
     //Envoie la requête INI
     int retour= send_request(ct->id,-1,client_socket_fd,message);
     if (retour == 0){
-    	printf("pas reçu ACK\n");
-    	fflush(stdout);
+    	printf("Client %d - ACK NOT RECEIVED \n", client_socket_fd);
     }
 
     else{
-    	printf("reçu ACK\n");
-    	fflush(stdout);
+    	printf("Client %d - ACK RECEIVED \n", client_socket_fd);
     }
-    printf("reçu %d\n",retour);
-    fflush(stdout);
 
   //  shutdown(client_socket_fd, SHUT_RDWR);
+    printf("Closing socket %d \n", client_socket_fd);
     close(client_socket_fd);
-
-   // printf("Waiting on server response (expecting an ACK\n");
-
   for (unsigned int request_id = 0; request_id < num_request_per_client;
       request_id++){
+        printf("Client %d attempting to REQ \n", client_socket_fd);
   		client_socket_fd = client_connect_server() ;
+        printf("New client socket fd %d \n", client_socket_fd);
   		char message1[50]  = "REQ";
   		char append1[5]; 
   		sprintf(append1," %d",ct->id);
@@ -299,13 +292,11 @@ void * ct_code (void *param){
   		//int retour= send_request(ct->id,-1,client_socket_fd,message);
     	
     	if (retour == 0){
-	    	printf("pas reçu ACK\n");
-	    	fflush(stdout);
+	    	    	printf("Client %d - ACK NOT RECEIVED \n", client_socket_fd);
    		 }
 
     	else{
-	    	printf("reçu ACK\n");
-	    	fflush(stdout);
+	    		printf("Client %d - ACK RECEIVED \n", client_socket_fd);
     	}
     	close(client_socket_fd);
 
