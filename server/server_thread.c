@@ -77,6 +77,8 @@ struct sockaddr_in thread_addr;
 // Variable du journal.
 // Nombre de requêtes acceptées immédiatement (ACK envoyé en réponse à REQ).
 unsigned int count_accepted = 0;
+
+int nbClients = 0;
 // Nombre de requêtes acceptées après un délai (ACK après REQ, mais retardé).
 unsigned int count_wait = 0;
 // Nombre de requête erronées (ERR envoyé en réponse à REQ).
@@ -367,7 +369,7 @@ void attendBeg( socklen_t socket_len ){
       // attend le beg 
       socketFd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
     }
-
+    nbClients+=1;
     int retour = fcntl(socketFd,F_GETFL);
     //printf("%s\n", );
     fcntl(socketFd,F_SETFL,retour& ~O_NONBLOCK);
@@ -999,8 +1001,7 @@ printf("Server a recu : %s du client %d \n",args,socket_fd);
 
       int j = 0;
 
-      //while(j!= nbRessources){
-        while(j!= besoin.size){
+      while(j!= nbRessources){
         if ((*besoin.data)[j].tid == tidClient){
           break;
         }
@@ -1237,7 +1238,7 @@ int assezRessources = 1;
 int formatValide = 1;
 
 //Algo inspiré de geeksforgeeks.org/operating-system-bankers-algorithm
-for (i=0;formatValide && assezRessources && i<num_resources;i++){
+for (i=0;formatValide && assezRessources && i<nbRessources;i++){
     //Requete demande n'est pas plus grande que le besoin
     formatValide = 
     client_request[i] <= arrayBesoinsClients[client_id][i] 
@@ -1271,13 +1272,67 @@ if (!assezRessources){
 }
 
  //System prétend qu'il a alloué les ressources
-for (int i=0; i<num_resources;i++){
+for (int i=0; i<nbRessources;i++){
     ressourcesLibres[i] -= client_request[i];
-    arrayAllouesClient[client_id][i];
+    arrayAllouesClient[client_id][i] += client_request[i];
     arrayBesoinsClient[client_id][i] -= client_request[i];
 }
 
 
+}
+
+
+
+void stateSafe(){
+    int work[nbRessources];
+    int finish[nbClients];
+    for (int i = 0 ; i < nbClients; i++){
+        finish[i] = false;
+    }
+    for (int i = 0; i < nbRessources; i++){
+        work[i] = ressourcesLibres[i];
+        //available
+    }
+    int safeTag = true;
+    int finishedTag = true;
+    //Cherche client tq pas déjà fait (finish = false) et chaque need <= work(available)
+    while(!finishedTag && safeTag){
+        finishedTag = true;
+        safeTag = true;
+        for(int i = 0 ; i < nbClients ; i ++){
+            if (!finish[i]){
+                //Si toutes ressources dispos
+                for (int j = 0; j < nbRessources; j++){
+                    if (!arrayBesoinsClients[client_id][i] <= work[j]){ //besoins          
+                    safeTag = false;
+
+                }
+                //On alloue
+                if (safeTag){
+                    for (int k = 0; k < nbRessources; k++){
+                        work[j] += arrayAllouesClients[client_id][i] //allocation
+                    }
+                    finish[i] = true;
+                    i=0;
+                }
+            }
+        }
+        for (int l = 0; l < nbClients ; l ++){
+            if (!finish[i]){
+                finishedTag = false;
+            }
+        }
+
+    }
+        //Si on est instable, on n'a pas choisi le bon truc
+        if (!safeTag){
+            //On efface ce qu'on avait fait
+            ressourcesLibres[i] += client_request[i];
+            arrayAllouesClient[client_id][i] -= client_request[i];
+            arrayBesoinsClient[client_id][i] += client_request[i];
+        }
+        pthread_mutex_unlock(&lockBanker);
+        return;
 }
 */
 //
