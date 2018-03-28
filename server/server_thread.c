@@ -322,6 +322,10 @@ void flushmoica(){
 
 
 struct array_t_string *parseInputGetLine(char *input){
+  //TODO: remplacer strtock par strtock_r pour rendre thread safe voir
+  /* https://stackoverflow.com/questions/15961253/c-correct-usage-of-strtok-r
+  	https://stackoverflow.com/questions/2227198/segmentation-fault-when-using-strtok-r?newreg=89b070f8caf842f69e47b0b4774f7748
+  	https://linux.die.net/man/3/strtok_r	*/ 
   pthread_mutex_lock(&lockStrTock);
   char *token =strtok(input,"\n");
   pthread_mutex_unlock(&lockStrTock);
@@ -815,7 +819,7 @@ void st_process_requests (server_thread * st, int socket_fd){
   while (true){
     
     char *args = NULL; size_t args_len = 0;
-    printf("About to getline Client %d \n", socket_fd);
+    printf("About to getline Client dans process et socket_fd= %d \n", socket_fd);
     if(getline(&args,&args_len,socket_r) == -1){//lit ce que le client envoie 
       //getline renvoie que il y a une erreur 
       sendErreur("ERR mauvaise commande",socket_w);
@@ -825,7 +829,7 @@ void st_process_requests (server_thread * st, int socket_fd){
       }
       break;
     }
-printf("Server a recu : %s du client %d \n",args,socket_fd);
+	printf("Server a recu : %s du client %d \n",args,socket_fd);
     //printf("va parser l'input\n");
     struct array_t_string *input= parseInputGetLine(args);
     imprimeArrayString(input);
@@ -1135,22 +1139,6 @@ printf("Server a recu : %s du client %d \n",args,socket_fd);
       //printf("va unlock le tableau des besoins\n");
       pthread_mutex_lock(&lockBesoin);
 
-      int positionBesoin = 0;
-
-    /*  while(positionBesoin!= (besoin.size - 1) ){//je cherche aussi le client
-        if (besoin.data[positionBesoin]->tid == tidClient){
-          break;
-        }
-
-        positionBesoin = positionBesoin + 1;
-      }
-
-      if (positionAllouer == nbRessources){
-        sendErreur("ERR le client n'a pas ete initiliase",socket_w);   
-        pthread_mutex_unlock(&besoin);
-        break;
-      }*/
-
       besoin = deleteClientInArray(&besoin,tidClient);
 
       pthread_mutex_unlock(&lockBesoin);
@@ -1167,7 +1155,6 @@ printf("Server a recu : %s du client %d \n",args,socket_fd);
 
       pthread_mutex_unlock(&lockCouDispa);
 
-
       sendAck(socket_w,tidClient);
     }
 
@@ -1181,15 +1168,15 @@ printf("Server a recu : %s du client %d \n",args,socket_fd);
    //}
 
     /*if (!args || cnt < 1 || args[cnt - 1] != '\n')//le buffer args est vide ou j'ai moins de 1 caractère qui a été écrit et ou mon dernier caractère n'est pas égale à une fin de ligne
-    {
-      printf ("Thread %d received incomplete cmd=%s!\n", st->id, cmd);
-      break;
-    }*/
+	    {
+	      printf ("Thread %d received incomplete cmd=%s!\n", st->id, cmd);
+	      break;
+	    }*/
 
-   // printf ("Thread %d received the command: %s%s", st->id, cmd, args);
+   		// printf ("Thread %d received the command: %s%s", st->id, cmd, args);
 
-    //fprintf (socket_w, "ERR Unknown command\n");
-   // free (args);
+   	 //fprintf (socket_w, "ERR Unknown command\n");
+  	 // free (args);
 }
 
 fclose (socket_r);
