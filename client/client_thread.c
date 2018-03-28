@@ -42,8 +42,6 @@ unsigned int count_dispatched = 0;                      //ACK reçu en réponse 
 
 // Nombre total de requêtes envoyées.
 unsigned int request_sent = 0;
-
-//bool *finClient;
  
 
 pthread_mutex_t lockCount_acc;
@@ -53,12 +51,6 @@ pthread_mutex_t lockCount_disp;
 pthread_mutex_t lockReqSent;
 //pthread_mutex_t lockFinClient;
 
-// Vous devez modifier cette fonction pour faire l'envoie des requêtes
-// Les ressources demandées par la requête doivent être choisies aléatoirement
-// (sans dépasser le maximum pour le client). Elles peuvent être positives
-// ou négatives.
-// Assurez-vous que la dernière requête d'un client libère toute les ressources
-// qu'il a jusqu'alors accumulées.
 void ct_start(){
 	int retour;
 	retour = pthread_mutex_init(&lockCount_acc,NULL);
@@ -114,28 +106,43 @@ void flushmoica(){
     fflush(stdout);
 }
 
+
+// Vous devez modifier cette fonction pour faire l'envoie des requêtes
+// Les ressources demandées par la requête doivent être choisies aléatoirement
+// (sans dépasser le maximum pour le client). Elles peuvent être positives
+// ou négatives.
+// Assurez-vous que la dernière requête d'un client libère toute les ressources
+// qu'il a jusqu'alors accumulées.
 int 
-send_request (int client_id, int request_id, int socket_fd,char* message) {
-    printf("Client %d attempting to send %s \n",socket_fd,message);
-    FILE *socket_w = fdopen(socket_fd, "w");
-    fprintf(socket_w, "%s", message);
-    fflush(socket_w);
-    printf("Message sent = %s \n",message);
+send_request (int client_id, int request_id, int socket_fd,char* message){
+    printf("Client %d attempting to send %s \n",client_id,message);
+    //FILE *socket_w = fdopen(socket_fd, "w");
+    //fprintf(socket_w, "%s", message);
+    //fflush(socket_w);
+    //printf("Message sent = %s \n",message);
+    if (send (socket_fd, message, strlen(message),0)<0){
+        printf("Send failed");
+        return -1;
+    }
     
-    
-    FILE *socket_r = fdopen(socket_fd, "r");
-    char* args; // = (char*) malloc (10*sizeof(char));
+    //FILE *socket_r = fdopen(socket_fd, "r");
+    //char* args; // = (char*) malloc (10*sizeof(char));
 	/*if (args==NULL){
 		perror("Buffer marche po");
 		exit(1);
 	}*/
 
-    size_t args_len = 0;
+    //size_t args_len = 0;
     
-    printf("Client %d waiting for response..\n", socket_fd);
+    printf("Client %d waiting for response..\n", client_id);
      
-    ssize_t cnt = getline(&args, &args_len, socket_r);//peut mettre dans un while tant que cnt = -1
-    printf("Client %d received %s \n", socket_fd, args);
+    //ssize_t cnt = getline(&args, &args_len, socket_r);//peut mettre dans un while tant que cnt = -1
+    if (recv (socket_fd, message, 50,0)<0){
+        printf("Receive failed");
+        return -1;
+    }
+    printf("Client %d received %s \n", client_id, message);
+    /*
     switch (cnt) {
         case -1:
             perror("Erreur réception client \n");
@@ -145,41 +152,26 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
 
             break;
     }
-   
-    /*
-    char toReceive[20];
-    memset (toReceive,'0', 20);
-    int res = recv(socket_fd,toReceive, strlen(toReceive),0);
-    switch (res){
-        case -1:
-            perror ("Erreur réception client");
-            break;
-        case 0:
-            perror ("Remote closed connexion");
-            break;
-        default:
-            break;
-    }
-    printf("%s \n", toReceive);
-    */
+   */
+
     // TP2 TODO:END
-    printf("Client %d close le stream \n", socket_fd);
-    flushmoica();
-    fclose(socket_w);
-    fclose(socket_r);
-    if (strcmp(args,"ACK")){
+    //printf("Client %d close le stream \n", socket_fd);
+    //flushmoica();
+    //fclose(socket_w);
+    //fclose(socket_r);
+    if (strcmp(message,"ACK")){
         pthread_mutex_lock(&lockCount_acc);
         count_accepted += 1;
         pthread_mutex_unlock(&lockCount_acc);
         return 1;
     }else{
-    	if (strstr(args,"ERR")!=NULL){
+    	if (strstr(message,"ERR")!=NULL){
     		pthread_mutex_lock(&lockCount_inv);
         	count_invalid += 1;
         	pthread_mutex_unlock(&lockCount_inv);
     	}
 
-    	else if(strstr(args,"WAIT")){
+    	else if(strstr(message,"WAIT")){
             pthread_mutex_lock(&lockCount_wait);
         	count_on_wait += 1;
         	pthread_mutex_unlock(&lockCount_wait);
@@ -217,14 +209,14 @@ int client_connect_server(){
     //Padding nécessaire posix
     memset (server_address.sin_zero, 0, sizeof (server_address.sin_zero));
     
-    printf("** Client %d désire se connecter ** \n", client_socket_fd);
+    printf("** Client FD %d désire se connecter ** \n", client_socket_fd);
     //flushmoica();
 
     if (connect(client_socket_fd,(struct sockaddr *) &server_address, sizeof(server_address)) < 0 ){
         perror("ERROR connexion");
         return client_socket_fd;
     };
-    printf("+_+ Client %d est connecté au serveur +_+ \n", client_socket_fd);
+    printf("+_+ Client FD %d est connecté à un serveur +_+ \n", client_socket_fd);
     flushmoica();
 
     return client_socket_fd;
@@ -254,19 +246,19 @@ void * ct_code (void *param){
     //Envoie la requête INI
     int retour= send_request(ct->id,-1,client_socket_fd,message);
     if (retour == 0){
-    	printf("Client %d - ACK NOT RECEIVED \n", client_socket_fd);
+    	printf("Client %d FD %d - ACK NOT RECEIVED \n", ct->id, client_socket_fd);
     }
 
     else{
-    	printf("Client %d - ACK RECEIVED \n", client_socket_fd);
+    	printf("Client %d FD %d - ACK RECEIVED \n", ct->id, client_socket_fd);
     }
 
   //  shutdown(client_socket_fd, SHUT_RDWR);
-    printf("Closing socket %d \n", client_socket_fd);
+    printf("Closing socket %d for Client %d \n", client_socket_fd, ct->id);
     close(client_socket_fd);
   for (unsigned int request_id = 0; request_id < num_request_per_client;
       request_id++){
-        printf("Client %d attempting to REQ \n", client_socket_fd);
+        printf("Client %d attempting to REQ \n", ct->id);
   		client_socket_fd = client_connect_server() ;
         printf("New client socket fd %d \n", client_socket_fd);
   		char message1[50]  = "REQ";
