@@ -71,7 +71,7 @@ bool send_config(int socket_fd){
     char beg[50] = "BEG ";
     sprintf(temp,"%d",num_resources); 
     strcat(beg,temp);
-    strcat(beg, " \n");
+    strcat(beg, "\n");
     char *toSend = beg;
 
     printf("VOICI CE QUE JE VEUX SEND %s \n",toSend);
@@ -92,7 +92,7 @@ bool send_config(int socket_fd){
         //strcat(toSend,provisioned_resources[num_resources]);
         strcat(toSend, " ");
     }
-    strcat(toSend, " \n");
+    strcat(toSend, "\n");
     retour = send_request(0,1,socket_fd,toSend);
 
     printf("close le socket \n");
