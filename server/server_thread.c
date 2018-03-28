@@ -818,8 +818,8 @@ void st_process_requests (server_thread * st, int socket_fd){
 
   while (true){
     
-    char *args = NULL; size_t args_len = 0;
-    printf("About to getline Client dans process et socket_fd= %d \n", socket_fd);
+    char *args; size_t args_len = 0;
+    printf("Server %d about to getline process et socket_fd = %d \n",st->id, socket_fd);
     if(getline(&args,&args_len,socket_r) == -1){//lit ce que le client envoie 
       //getline renvoie que il y a une erreur 
       sendErreur("ERR mauvaise commande",socket_w);
@@ -829,13 +829,15 @@ void st_process_requests (server_thread * st, int socket_fd){
       }
       break;
     }
-	printf("Server a recu : %s du client %d \n",args,socket_fd);
+printf("Server %d a recu : %s \n", st->id, args);
+printf("du client %d sur le FD %d \n",input->data[1],socket_fd)
     //printf("va parser l'input\n");
     struct array_t_string *input= parseInputGetLine(args);
-    imprimeArrayString(input);
+    //imprimeArrayString(input);
     
     //printf("commence les comparaisons\n");
-    fflush(stdout);
+    //fflush(stdout);
+	printf("Server %d a recu : %s du client %d sur le FD %d \n", st->id, args,input->data[1],socket_fd);
     if(strcmp(input->data[0],"END") == 0){
       //free(cmd);
       //ma commande est end 
@@ -850,7 +852,7 @@ void st_process_requests (server_thread * st, int socket_fd){
     }
 
     if( strcmp(input->data[0],"INI") == 0){
-        printf("rentre dans INI\n");
+        printf("rentre dans INI Server %d Client %d FD %d \n", st->id, socket_fd);
         //free(cmd);
         int *ressourcestemp = calloc(nbRessources, sizeof(int));
 
@@ -930,7 +932,7 @@ void st_process_requests (server_thread * st, int socket_fd){
        // pthread_mutex_unlock(&lockMax);
         break;
        }
-       printf("unlock le max\n");
+       //printf("unlock le max \n");
        pthread_mutex_unlock(&lockMax);
           //struct array_t besoinTemp = new_array(max.capacity);
 
@@ -1034,7 +1036,7 @@ void st_process_requests (server_thread * st, int socket_fd){
           sendWait(max_wait_time,socket_w,*max.data[j]);
           free(ressourcesDem);
           pthread_mutex_unlock(&lockResLibres); 
-          printf("va unlock le tableau des besoins\n");
+          //printf("va unlock le tableau des besoins\n");
           pthread_mutex_unlock(&lockBesoin);
           delete_array_string(input);
           free(args);
@@ -1047,7 +1049,7 @@ void st_process_requests (server_thread * st, int socket_fd){
           sendErreur("ERR client demande plus de ressources que le max declarer dans ini",socket_w);
           
           pthread_mutex_unlock(&lockResLibres); 
-          printf("va unlock le tableau des besoins\n");
+          //printf("va unlock le tableau des besoins\n");
           pthread_mutex_unlock(&lockBesoin);
           free(ressourcesDem);
                   freeValues(args, input);
@@ -1088,7 +1090,7 @@ void st_process_requests (server_thread * st, int socket_fd){
 
       pthread_mutex_unlock(&lockAllouer);
       pthread_mutex_unlock(&lockResLibres); 
-      printf("va unlock le tableau des besoins\n");
+      //printf("va unlock le tableau des besoins\n");
       pthread_mutex_unlock(&lockBesoin);
       free(ressourcesDem);
               freeValues(args, input);
@@ -1195,9 +1197,9 @@ void *st_code (void *param){
   while (accepting_connections)
   {
     // Wait for a I/O socket.
-    printf("Server commence le wait\n");
+    printf("Server %d commence le wait\n", st->id);
     thread_socket_fd = st_wait();
-    printf("Server a accepté le client %d \n", thread_socket_fd);
+    printf("Server %d a accepté un client sur le FD  %d \n", st->id, thread_socket_fd);
     if (thread_socket_fd < 0)
     {
       fprintf (stderr, "Time out on thread %d.\n", st->id);//reesaye plus tard
@@ -1206,12 +1208,12 @@ void *st_code (void *param){
 
     if (thread_socket_fd > 0)//si j'ai eu une requete
     {
-      //printf("va rentrer dans st_process_requests\n");
-      //printf("\n");
-      printf("Server va process la requête de %d \n", thread_socket_fd);
+      //printf("va rentrer dans st_process_requests \n");
+      //printf(" \n");
+      printf("Server %d va process la requête de Thread FD %d \n",st->id, thread_socket_fd);
       st_process_requests (st, thread_socket_fd);
-      //printf("est sorti de st_process_requests\n");
-      //printf("\n");
+      //printf("est sorti de st_process_requests \n");
+      //printf(" \n");
       close (thread_socket_fd);
     }
   }
