@@ -47,7 +47,7 @@ void st_print_results (FILE *, bool);
 void erreur(const char *message);
 
 
-void sendErreur(const char *message, FILE *socket_w);
+void sendErreur(const char *message, int socket_fd);
 
 int st_wait();
 

@@ -1,26 +1,18 @@
 //#define _XOPEN_SOURCE 700   /* So as to allow use of `fdopen` and `getline`.  */
 #include "server_thread.h"
-//#include <netinet/in.h>
 #include <netdb.h>
 #include <strings.h>
 #include <string.h>
-//#include <stdio.h>
-//#include <stdlib.h>
 #include<pthread.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <signal.h>
 #include <time.h>
-//#include <stdbool.h>
-//debut code pris de fred
 #include "dyn_array.h"
 
-//#include <errno.h>
-//#include <malloc.h>
 void flushmoica();
 
-//fin premiere partie code de fred
 
 
 enum { NUL = '\0' };
@@ -70,9 +62,6 @@ struct array_t max;
 struct array_t allouer;
 struct array_t besoin;
 
-//struct Client *allouer;
-//struct Client *besoin;
-
 struct sockaddr_in thread_addr;
 // Variable du journal.
 // Nombre de requêtes acceptées immédiatement (ACK envoyé en réponse à REQ).
@@ -93,11 +82,9 @@ unsigned int clients_ended = 0;
 // TODO: Ajouter vos structures de données partagées, ici.
 int *available;
 
-//debut deuxieme partie code de fred
 struct array_t {
   size_t size, capacity;
   struct Client **data;
- // void **data;
 };
 
 struct array_t_string{
@@ -133,8 +120,6 @@ struct array_t_string *new_arrayString (size_t capacity) {
 
     newA->capacity = capacity;
     newA->size = 0;
-
-    //newA->data = malloc(capacity*sizeof(char**));
     newA->data = malloc(capacity*sizeof(char *));
 
   if(!newA->data) {
@@ -186,7 +171,6 @@ int push_backString(struct array_t_string *array, char *element) {
   array->data[array->size] = element;
   //printf("Ajouter element dans push_backString\n");
   array->size++;
-  //printf(" size mis a jour dans push_backString\n");  
   return 0; 
 }
 
@@ -203,21 +187,13 @@ void delete_array (struct array_t *array) {
 
 void delete_array_string (struct array_t_string *array) {
   if(array) {//si array n'est pas NULL 
-    //struct array_t_string *ptr; 
-    //if ((ptr = array)) {
-      //printf("free le data\n");
       free(array->data);
-      //printf("free le pointeur\n");
       free(array);
-    //}
-    array = NULL; 
+      array = NULL; 
   }
 }
 
-//fin deuxieme partie code de fred
 struct array_t deleteClientInArray(struct array_t *array, int clientTid){
-  //inspire par le code de fred
-
   struct array_t arrayTemp = *new_array(array->size);
   for (int i = 0; i < array->size; ++i){
     struct Client *listeClient = *(*array).data;
@@ -228,13 +204,15 @@ struct array_t deleteClientInArray(struct array_t *array, int clientTid){
   return arrayTemp;
 }
 
-void sendErreur(const char *message, FILE *socket_w){
+void sendErreur(const char *message, int socket_fd){
   //envoie au client le message d'erreur 
-  printf("Serveur va envoyer %s \n",message);
-  fprintf (socket_w, "%s",message);
-  fflush(socket_w);
-   //printf("a envoyé %s \n",message);
-
+  printf("Serveur va envoyer ERR %s \n",message);
+  char mymessage[25];
+  sprintf(mymessage,"ERR %s",message); //
+  if (send (socket_fd, mymessage, strlen(mymessage),0)<0){
+      printf("Send failed");
+      return;
+  }
   pthread_mutex_lock(&lockCouInvalid);
   count_invalid = count_invalid + 1;
   pthread_mutex_unlock(&lockCouInvalid); 
@@ -244,20 +222,20 @@ void sendErreur(const char *message, FILE *socket_w){
   return;
 }
 
-void sendWait(int temps,FILE *socket_w,struct Client client){
- printf("Serveur va envoyer Wait\n");
- fprintf (socket_w, "Wait %d",temps);
- fflush(socket_w);
- //printf("va envoyé Wait\n");
-
+void sendWait(int temps,int socket_fd, struct Client client){
+ printf("Serveur va envoyer WAIT %d \n", temps);
+ char mymessage[25];
+ sprintf(mymessage,"WAIT %d",temps); //
+ if (send (socket_fd, mymessage, strlen(mymessage),0)<0){
+      printf("Send failed");
+      return;
+ }
  pthread_mutex_lock(&lockClientWait);
  push_back(&clientQuiWait,&client);
  pthread_mutex_unlock(&lockClientWait);
-
  pthread_mutex_lock(&lockReqPro);
-  request_processed = request_processed + 1;
-  pthread_mutex_unlock(&lockReqPro);
- 
+ request_processed = request_processed + 1;
+ pthread_mutex_unlock(&lockReqPro);
  return;
 }
 
@@ -275,57 +253,34 @@ bool estDansListe(struct array_t *liste,int clientTid ){
   return false;
 }
 
-void imprimeArrayString(struct array_t_string *array){
-  //printf("Contenu de input\n");
-  for (int i = 0; i < array->size; ++i){
-    printf("%s ",array->data[i] );
-  }
-  printf("\n");
-  //fflush(stdout);
-}
 
-
-void sendAck(FILE *socket_w, int clientTid){
-  printf("va envoyer ACK\n");
-  fprintf (socket_w, "ACK \n");
-  fflush(socket_w);
-  //printf("a envoyé ACK\n");
-  printf("\n" );
+void sendAck(int socket_fd){
+int clientTid = -1;
+//TODO
+ char mymessage[25] = "ACK \n";
+ if (send (socket_fd, mymessage, strlen(mymessage),0)<0){
+      printf("Send failed");
+      return;
+ }
   
   pthread_mutex_lock(&lockCountAccep);
   count_accepted = count_accepted + 1;
   pthread_mutex_unlock(&lockCountAccep);
-
   pthread_mutex_lock(&lockClientWait);
-  
   if ( clientTid != -1 &&estDansListe(&clientQuiWait,clientTid)){
-  
     pthread_mutex_lock(&lockCouWait);
     count_wait = count_wait + 1;
     pthread_mutex_unlock(&lockCouWait);
-  
     deleteClientInArray(&clientQuiWait,clientTid);
   }
   pthread_mutex_unlock(&lockClientWait);
-
   pthread_mutex_lock(&lockReqPro);
   request_processed = request_processed + 1;
   pthread_mutex_unlock(&lockReqPro);
-  
   return;
 }
 
-void flushmoica(){
-  fflush(stdout);
-}
-
-
-
-struct array_t_string *parseInputGetLine(char *input){
-  //TODO: remplacer strtock par strtock_r pour rendre thread safe voir
-  /* https://stackoverflow.com/questions/15961253/c-correct-usage-of-strtok-r
-  	https://stackoverflow.com/questions/2227198/segmentation-fault-when-using-strtok-r?newreg=89b070f8caf842f69e47b0b4774f7748
-  	https://linux.die.net/man/3/strtok_r	*/ 
+struct array_t_string *parseInput(char *input){
   pthread_mutex_lock(&lockStrTock);
   char *token =strtok(input,"\n");
   pthread_mutex_unlock(&lockStrTock);
@@ -335,28 +290,17 @@ struct array_t_string *parseInputGetLine(char *input){
   pthread_mutex_lock(&lockStrTock);
   token = strtok(token," ");
   
- /* if (token == NULL){
-    return array;
-  }*/
   int i =0;
 
   while(token != NULL){
-  	//printf("ajoute a l'array iteration %d\n",i );
   	if(push_backString(array,token)==-1){
-  		perror("parseinputgetline");
+  		perror("parseinput error");
   	}
   	token = strtok(NULL," ");
   	 i +=1;
   }
-
   pthread_mutex_unlock(&lockStrTock);
-
   return array;
-}
-
-void closeStream(FILE *sockr, FILE *sockw){
-    fclose(sockr);
-    fclose(sockw);
 }
 
 void freeValues(char *args, struct array_t_string *input){
@@ -364,95 +308,61 @@ void freeValues(char *args, struct array_t_string *input){
     delete_array_string(input);
 }
 void attendBeg( socklen_t socket_len ){
-  int socketFd = -1;
+  int socket_fd = -1;
   bool bonneCommande = false;
 
   printf("Server dans le BEG \n");
   while(!bonneCommande){
-    while( socketFd == -1) { 
+    while( socket_fd == -1) { 
       // attend le beg 
-      socketFd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
+      socket_fd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
     }
     nbClients+=1;
-    int retour = fcntl(socketFd,F_GETFL);
-    //printf("%s\n", );
-    fcntl(socketFd,F_SETFL,retour& ~O_NONBLOCK);
-
-    
-   /* printf("Server accepted connexion from : %s \n", &thread_addr);
-    printf("%d\n",retour & O_NONBLOCK );
-    printf("%d\n",O_NONBLOCK );*/
-    
-    FILE *socket_r = fdopen (socketFd, "r");
-    FILE *socket_w = fdopen (socketFd, "w");
-
-    //char *args = (char*) malloc (10*sizeof(char));
-    char *args; 
-    size_t args_len=0;
 
     printf("About to getline \n");
-    if(getline(&args,&args_len,socket_r) == -1){
-      printf("J'AI PAS REÇU UNE COMMANDE \n");
-      perror("getline");
-      sendErreur("ERR mauvaise commande",socket_w);
-      fclose (socket_r);
-      fclose (socket_w);
-      continue;
+    char message[50];
+    if (recv (socket_fd, message, 50, 0 )<0){
+        printf("Receive failed");
+        continue;
+    
 
-    }else{//pas d'erreur avec getline 
-      printf("Commande reçue \n");
-      struct array_t_string *input = parseInputGetLine(args);
-      imprimeArrayString(input);
+    }else{
+      struct array_t_string *input = parseInput(message);
       if(input->size != 2 ){
-        sendErreur("ERR trop d'arguments",socket_w);
-        freeValues(args, input);
-        closeStream(socket_r, socket_w);
+        sendErreur("trop d'arguments",socket_fd);
+        delete_array_string(input); 
         continue;
       }
 
       if( strcmp(input->data[0],"BEG") == 0){
           //commande est beg
-        args_len = 0;
-        
         int valeur = atoi(input->data[1]);
       
         if (valeur == 0 && strcmp(input->data[1],"0") != 0){
-         sendErreur("ERR premier argument pas un int",socket_w);
-        freeValues(args, input);
-        closeStream(socket_r, socket_w);
-         continue;
+            sendErreur("premier argument pas un int",socket_fd);         
+            delete_array_string(input); 
+            continue;
        } else if (valeur==0){
-         sendErreur("ERR le nombre de ressource ne peut pas etre egale a 0 ... (gros jugement)",socket_w);
-        freeValues(args, input);
-        closeStream(socket_r, socket_w);
-         continue;
-       } 
-        else if (valeur<0){
-         sendErreur("ERR le nombre de ressource ne peut pas etre inferieure a 0 ",socket_w);
-        freeValues(args, input);
-        closeStream(socket_r, socket_w);
-         continue;
+            sendErreur("le nombre de ressource ne peut pas etre egale a 0",socket_fd);
+            delete_array_string(input); 
+            continue;
+       } else if (valeur<0){
+            sendErreur("le nombre de ressource ne peut pas etre inferieure à 0",socket_fd);
+            delete_array_string(input); 
+            continue;
        } else{
-         printf("SERVEUR A BIEN REÇU LE BEG \n");
+            printf("SERVEUR A BIEN REÇU LE BEG \n");
 
-         ressourcesLibres = calloc(valeur,sizeof(int));
-         nbChaqueRess = calloc(valeur,sizeof(int));
-         nbRessources = valeur;
-         //printf("va send sendAck\n");
-         sendAck(socket_w,-1);
-         //printf("free args\n");
-         //free(args);
-         //printf("delete array\n");
-       
-         delete_array_string(input);
-         closeStream(socket_r, socket_w);
-         break;
+            ressourcesLibres = calloc(valeur,sizeof(int));
+            nbChaqueRess = calloc(valeur,sizeof(int));
+            nbRessources = valeur;
+            sendAck(socket_fd); //need client id?
+            delete_array_string(input);
+            break;
        }
-
-     }else{
-      sendErreur("ERR mauvais commande attend BEG",socket_w);
-        freeValues(args, input);
-        closeStream(socket_r, socket_w);
+      }else{
+           sendErreur("mauvaise commande, on attend BEG", socket_fd);
+           delete_array_string(input); 
      } 
     }
   }
@@ -460,46 +370,27 @@ void attendBeg( socklen_t socket_len ){
 }
 
 void attendPro(socklen_t socket_len){
-  int socket_fd;
+  int socket_fd = -1;
   bool bonneCommande = false;
   printf("Server attend le pro \n");
   while(!bonneCommande){
-  	 socket_fd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
-
     while( socket_fd == -1) { 
-      // attend le beg 
       socket_fd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
     }
     
-    FILE *socket_r = fdopen (socket_fd, "r");
-    FILE *socket_w = fdopen (socket_fd, "w");
-
-
-    char *args = NULL; 
-    size_t args_len=0;
-    //int longueur = 0;
-       //ssize_t cnt = getline (&args, &args_len, socket_r);
-   // ssize_t cnt = getdelim (&args, &args_len,(int)' ', socket_r);
-    printf("Right before getline \n");
-    if(getline(&args,&args_len,socket_r) == -1){
-
-      sendErreur("ERR mauvaise commande",socket_w);
-      free(args);
- 
-      //delete_array_string(input);
-        closeStream(socket_r, socket_w);
+     char message[50];
+    if (recv (socket_fd, message, 50, 0 )<0){
+        printf("Receive failed");
+        continue;
     }
 
     else{
       printf("Right before parseinputgetline \n");
-      struct array_t_string *input = parseInputGetLine(args);
-      imprimeArrayString(input);
-             //parse (args," "); 
-      printf("Right after parseinput \n");
+      struct array_t_string *input = parseInput(message);
+      
       if(input->size != nbRessources + 1){
-        sendErreur("ERR trop d'arguments",socket_w);
-        freeValues(args, input);
-        closeStream(socket_r, socket_w);
+        printf("ERR trop d'arguments");
+delete_array_string(input); 
         continue;
       }
       printf("After the argument check \n");
@@ -517,28 +408,25 @@ void attendPro(socklen_t socket_len){
 
           if (valeur == 0 && strcmp(input->data[longueur],"0") != 0){
 
-            sendErreur("ERR une argument n'est pas un int",socket_w);
-                   freeValues(args, input);
-        closeStream(socket_r, socket_w);
+            printf("ERR une argument n'est pas un int");
+                   delete_array_string(input); 
             continue;
           }
 
           else if (valeur==0){//une resssource aura un nb de ressource 
-            sendErreur("ERR le nombre de ressource ne peut pas etre egale a 0 ... (gros jugement)",socket_w);
-                    freeValues(args, input);
-        closeStream(socket_r, socket_w);
+            printf("ERR le nombre de ressource ne peut pas etre egale a 0 ... (gros jugement)");
+                    delete_array_string(input); 
               continue;
           }
 
           else{
              ressourcesLibres[longueur - 1] = valeur;
              nbChaqueRess[longueur - 1] = valeur;
-             //free(args);
              longueur = longueur + 1;
 
              if (longueur == nbRessources){
                bonneCommande = true;
-               sendAck(socket_w,-1);
+               sendAck(socket_fd);
                break;
              }
           }
@@ -546,8 +434,7 @@ void attendPro(socklen_t socket_len){
        }
       }
      else{
-      sendErreur("ERR mauvais commande attend PRO",socket_w);
-      free(args);
+      printf("ERR mauvais commande attend PRO");
      }
     }
   } 
@@ -565,10 +452,6 @@ void st_init (){
   // Handle interrupt
   printf("Serveur dans le init \n");
   signal(SIGINT, &sigint_handler); 
-  //sigint est le (Signal Interrupt) Interactive attention signal.
-  //sigint_handler est une fonction donc je donne un pointeur vers cette fonction
-  //signal retourne la dernière valeur de la fonction ?
-
   // Initialise le nombre de clients connecté.
   nb_registered_clients = 0;
 
@@ -689,17 +572,8 @@ int st_wait() {
   return thread_socket_fd;   //si -1 pas eu 
 }
 
-/*struct reponse {
-  //char *args;
-  struct array_t_string args;
-  bool erreur;
-  ssize_t cnt;
-  int valeur;
-}; */
 
-//struct reponse
-
-bool commEND (FILE *socket_r,FILE *socket_w){
+bool commEND (int socket_fd){
       pthread_mutex_lock(&lockNbClient);
       pthread_mutex_lock(&lockCouDispa);
       if (nb_registered_clients==count_dispatched){
@@ -709,10 +583,7 @@ bool commEND (FILE *socket_r,FILE *socket_w){
         for (int i = 0; i < nbRessources; ++i){
 
           if(nbChaqueRess[i] != ressourcesLibres[i]){
-            sendErreur("ERR des ressources n'ont pas ete liberer",socket_w);
-            //free(args);
-            //fclose (socket_r);
-            //fclose (socket_w);
+            printf("ERR des ressources n'ont pas ete liberer");
             return false ;
           }
         }
@@ -723,8 +594,6 @@ bool commEND (FILE *socket_r,FILE *socket_w){
         
         //detruit les mutex et libère la mémoire pour mettre fin au serveur
         
-
-
         pthread_mutex_unlock(&lockResLibres);
         pthread_mutex_destroy(&lockResLibres);
         pthread_mutex_unlock(&locknbChaqRess);
@@ -789,220 +658,121 @@ bool commEND (FILE *socket_r,FILE *socket_w){
       }
 
       else{
-        sendErreur("ERR il reste des clients \n",socket_w);
+        sendErreur("il reste des clients \n",socket_fd);
         return false;
       }
 }
 
-bool verifiePremierArgs (struct array_t_string *args,FILE *socket_r,FILE *socket_w){
-      
-        
+bool verifiePremierArgs (struct array_t_string *args, int socket_fd){
         if (args->size < 2 ){
-          sendErreur("ERR pas assez d'arguments",socket_w);
+          sendErreur("pas assez d'arguments",socket_fd);
           return false;
         }        
         int valeur = atoi(args->data[1]);
 
-        if ( valeur == 0 && strcmp(args->data[1],"0") != 0){
-          sendErreur("ERR tid n'est pas un int",socket_w); 
+        if (valeur == 0 && strcmp(args->data[1],"0") != 0){
+          sendErreur("tid n'est pas un int",socket_fd); 
+            printf("ERR tid n'est pas un int");
           return false;
         }
-        //si les arguments donc sont valide  
         return true;
 }
 
-void st_process_requests (server_thread * st, int socket_fd){
-  // TODO: Remplacer le contenu de cette fonction
-  FILE *socket_r = fdopen (socket_fd, "r");
-  FILE *socket_w = fdopen (socket_fd, "w");
-
-  while (true){
-    
-    char *args; size_t args_len = 0;
-    printf("Server %d about to getline process et socket_fd = %d \n",st->id, socket_fd);
-    if(getline(&args,&args_len,socket_r) == -1){//lit ce que le client envoie 
-      //getline renvoie que il y a une erreur 
-      sendErreur("ERR mauvaise commande",socket_w);
-
-      if (args){
-        free(args);
-      }
-      break;
-    }
-printf("Server %d a recu : %s \n", st->id, args);
-printf("du client %d sur le FD %d \n",input->data[1],socket_fd)
-    //printf("va parser l'input\n");
-    struct array_t_string *input= parseInputGetLine(args);
-    //imprimeArrayString(input);
-    
-    //printf("commence les comparaisons\n");
-    //fflush(stdout);
-	printf("Server %d a recu : %s du client %d sur le FD %d \n", st->id, args,input->data[1],socket_fd);
-    if(strcmp(input->data[0],"END") == 0){
-      //free(cmd);
-      //ma commande est end 
-      commEND(socket_r,socket_w);
-      delete_array_string(input);
-      break;
-    }
-
-
-    else if(!verifiePremierArgs(input,socket_r,socket_w)){
-        return; //j'ai eu une erreur et j'ai envoyer un message d'erreur 
-    }
-
-    if( strcmp(input->data[0],"INI") == 0){
-        printf("rentre dans INI Server %d Client %d FD %d \n", st->id, socket_fd);
-        //free(cmd);
-        int *ressourcestemp = calloc(nbRessources, sizeof(int));
-
-        if (!verifiePremierArgs(input,socket_r,socket_w)){
-          free(ressourcestemp);
-          delete_array_string(input);
-          free(args);
-          break;
-        }
-
-        int tidClient = atoi(input->data[1]);
-        int longueur = 2;
-
-        while(longueur != input->size){
-          //printf("itère sur les arguments\n");
-         
-          int  valeur = atoi(input->data[longueur]);
-
-          if ( valeur == 0 && strcmp(input->data[longueur],"0") != 0){
-            sendErreur("ERR erreur une valeur n'est pas un int",socket_w);
-            free(ressourcestemp);
-            free(args);
-            delete_array_string(input);
-            break;
-          }
-
-          else if (valeur<0){
-            sendErreur("ERR erreur une valeur est negative",socket_w);
-            free(ressourcestemp);
-            free(args);
-            delete_array_string(input);
-            break;
-          }
-
-          else{
-          //  printf("pas d'erreur sur l'argument\n");
-           ressourcestemp[longueur-2] = valeur;
-           longueur = longueur + 1;
-         }           
-       }
-
-       if (longueur-2 != nbRessources){//les ressoruces n'ont pas tous été déclaré
-         
-          //printf("longueur = %d\n",longueur);
-         // printf("nbRessources = %d\n",longueur);
-          sendErreur("ERR mauvais nombre de ressources specifier",socket_w);
-          free(ressourcestemp);
-          delete_array_string(input);
-          free(args);
-          break;
-       }
-
-          //struct Client *maxTemp;
-         /* maxTemp = calloc(nb_registered_clients + 1, sizeof(struct Client));
-
-          pthread_mutex_lock(&lockMax);
-
-          for (int i = 0; i < nb_registered_clients; ++i){
-            maxTemp[i] = max[i];
-          }*/
-
-      // printf("pas de probleme avec les arguments\n");
-       struct Client nouvClient = {tidClient,ressourcestemp};
-        //maxTemp[nb_registered_clients + 1] = nouvClient; 
-       //printf("va prendre le lock du max\n");
-       pthread_mutex_lock(&lockMax);
-       //printf("va push dans le max le nouveau client\n");
-       int retour1 = push_back(&max,&nouvClient);//met le client dans l'array max
-       
-       if (retour1 == -1){
-        sendErreur("ERR erreur interne",socket_w);
-        pthread_mutex_unlock(&lockMax);
-          //pthread_mutex_unlock(&lockNbClient);
-        free(args);
+bool checkInt(struct array_t_string *input, int valeur, int longueur, int socket_fd){
+      if ( valeur == 0 && strcmp(input->data[longueur],"0") != 0){
+        sendErreur("erreur une valeur n'est pas un int",socket_fd);
+        //printf("ERR erreur une valeur n'est pas un int"); 
         delete_array_string(input);
-        free(ressourcestemp);
-       // pthread_mutex_unlock(&lockMax);
-        break;
-       }
-       //printf("unlock le max \n");
-       pthread_mutex_unlock(&lockMax);
-          //struct array_t besoinTemp = new_array(max.capacity);
+        return false;
+      }
+      return true;
+}
 
-       int *besoinTemp = calloc(nbRessources,sizeof(int));
-       //printf("va initialiser le tableau des besoins\n");
-       for (int i = 0; i < nbRessources; ++i){
-         besoinTemp[i] = ressourcestemp[i]; //initialise le tableau des besoins 
-       }                                     //le client a besoin du maximum
-          //free(max);
-         // max = maxTemp;
-       //printf("va lock le talbeau des besoins\n");
-       struct Client nouvClientBesoin = {tidClient,besoinTemp};
-       pthread_mutex_lock(&lockBesoin);
-       retour1 = push_back(&besoin,&nouvClientBesoin);
-       if (retour1 == -1){
-         sendErreur("ERR erreur interne",socket_w);
-         //printf("va unlock le tableau des besoins\n");
-         pthread_mutex_unlock(&lockBesoin);
-            //pthread_mutex_unlock(&lockNbClient);
-         //printf("va liberer ressouces temp\n");
-         free(ressourcestemp);
-         break;
-       }
-       pthread_mutex_unlock(&lockBesoin);
-       //printf("met a jour le nombre de client\n");
-       pthread_mutex_lock(&lockNbClient);
-       nb_registered_clients = nb_registered_clients + 1;  //j'ai un client de plus 
-       pthread_mutex_unlock(&lockNbClient);
-       //printf("envoie un ack\n");
-       sendAck(socket_w,tidClient);
-       break;
-    }
+void myfree(struct array_t_string *input, int* ressourcestemp){
+   delete_array_string(input); 
+   free(ressourcestemp);
+}
 
+void checkIni(int longueur, int tidClient, struct array_t_string *input, int* ressourcestemp, int socket_fd){
+    while(longueur != input->size){
+              int  valeur = atoi(input->data[longueur]);
 
-    else if (strcmp(input->data[0],"REQ") == 0){
-      //free(cmd);
-      int *ressourcesDem = calloc(nbRessources, sizeof(int));
-      
-      int tidClient = atoi(input->data[1]);
-      //int tidClient = valeur;
-      int longueur = 2;
+              if(!checkInt(input, valeur, longueur, valeur)){
+                   myfree(input, ressourcestemp);
+                   return;
+              }
 
-      while(longueur + 2 != input->size){
-   
-        /*struct reponse retour;
-        retour= verifiePremierArgs(args,args_len,socket_r,socket_w);*/
+              if (valeur<0){
+                sendErreur("erreur une valeur est negative",socket_fd);
+                printf("ERR erreur une valeur est negative"); 
+                myfree(input, ressourcestemp);
+                return;
+              }
+              ressourcestemp[longueur-2] = valeur;
+              longueur = longueur + 1;
+            } 
+            if (longueur-2 != nbRessources){//les ressources n'ont pas tous été déclaré
+                sendErreur("mauvais nombre de ressources specifier",socket_fd);
+                printf("ERR mauvais nombre de ressources specifier");
+                myfree(input, ressourcestemp);
+                return;
+            }          
+           struct Client nouvClient = {tidClient,ressourcestemp};
+           pthread_mutex_lock(&lockMax);
+
+           if (push_back(&max,&nouvClient) == -1){
+            sendErreur("erreur interne",socket_fd);
+            printf("erreur interne");
+            pthread_mutex_unlock(&lockMax);
+            myfree(input, ressourcestemp);
+            return -1;
+           }
+
+           pthread_mutex_unlock(&lockMax);
+           int *besoinTemp = calloc(nbRessources,sizeof(int));
+
+           for (int i = 0; i < nbRessources; ++i){
+             besoinTemp[i] = ressourcestemp[i]; //initialise le tableau des besoins 
+           }                                     //le client a besoin du maximum
+
+           struct Client nouvClientBesoin = {tidClient,besoinTemp};
+           pthread_mutex_lock(&lockBesoin);
+           if (push_back(&besoin,&nouvClientBesoin) == -1){
+             sendErreur("erreur interne",socket_fd);
+            printf("ERR interne");         
+            pthread_mutex_unlock(&lockBesoin);
+            free(ressourcestemp);
+            return;
+           }
+           pthread_mutex_unlock(&lockBesoin);
+           pthread_mutex_lock(&lockNbClient);
+           nb_registered_clients = nb_registered_clients + 1;  //j'ai un client de plus 
+           pthread_mutex_unlock(&lockNbClient);
+           sendAck(socket_fd);
+           return;
+        
+}
+
+void checkReq(int longueur, int tidClient, struct array_t_string *input, int* ressourcesDem, int socket_fd){
+    int i = 0;
+     while(longueur + 2 != input->size){
         int  valeur = atoi(input->data[longueur]);
-
-        if ( valeur == 0 && strcmp(args,"0") != 0){
-          sendErreur("ERR erreur une valeur n'est pas un int",socket_w);
-          free(ressourcesDem);
-          delete_array_string(input);
-          free(args);
-            break;
+        if ( valeur == 0 && strcmp(input->data[i],"0") != 0){
+          sendErreur("erreur une valeur n'est pas un int",socket_fd);
+          myfree(input,ressourcesDem);
+          return;
         }
-
         else{
           ressourcesDem[longueur] = valeur;
           longueur = longueur + 1;
-        }       
+        }    
+        i++;   
       }
 
       if (longueur-2 != nbRessources){//les ressoruces n'ont pas tous été déclaré
-         sendErreur("ERR mauvais nombre de ressources specifier",socket_w);
-          free(ressourcesDem);
-          delete_array_string(input);
-          free(args);
-          break;
+         sendErreur("mauvais nombre de ressources specifier",socket_fd);
+          myfree(input,ressourcesDem);
        }
-      //printf("va unlock le tableau des besoins\n");
       pthread_mutex_lock(&lockBesoin);
 
       int j = 0;
@@ -1016,44 +786,33 @@ printf("du client %d sur le FD %d \n",input->data[1],socket_fd)
       }
 
       if (j==nbRessources){
-        sendErreur("ERR le client n'a pas ete initiliase",socket_w);   
-        //printf("va unlock le tableau des besoins\n");
+        printf("ERR le client n'a pas ete initiliase");   
         pthread_mutex_unlock(&lockBesoin);
-        free(ressourcesDem);
-        break;
+            myfree(input,ressourcesDem);
       }
 
       int *ressBesoinClient = (*besoin.data)[j].ressClient;
 
       pthread_mutex_lock(&lockResLibres);
-
-      //bool *assezRessPourMax = calloc(nbRessources, sizeof(bool));
       int assezRessPourMax = 0;
       for (int i = 0; i < nbRessources; ++i){
         //je regarde si j'ai assez de ressources de chaque pour allouer au client 
         //et si j'ai une erreur puisque demande plus qu'il en a besoin 
         if(ressourcesDem[i] > ressourcesLibres[i]){
-          sendWait(max_wait_time,socket_w,*max.data[j]);
-          free(ressourcesDem);
+          sendWait(max_wait_time,socket_fd,*max.data[j]);
           pthread_mutex_unlock(&lockResLibres); 
-          //printf("va unlock le tableau des besoins\n");
           pthread_mutex_unlock(&lockBesoin);
-          delete_array_string(input);
-          free(args);
-          fclose (socket_r);
-          fclose (socket_w);
+          myfree(input,ressourcesDem);
           return;
         }
 
         else if(ressourcesDem[i]>ressBesoinClient[i]){
-          sendErreur("ERR client demande plus de ressources que le max declarer dans ini",socket_w);
+          printf("ERR client demande plus de ressources que le max declarer dans ini");
           
           pthread_mutex_unlock(&lockResLibres); 
-          //printf("va unlock le tableau des besoins\n");
           pthread_mutex_unlock(&lockBesoin);
-          free(ressourcesDem);
-                  freeValues(args, input);
-        closeStream(socket_r, socket_w);
+           myfree(input,ressourcesDem);
+          //closeStream(socket_r, socket_w);
           return;
         }
 
@@ -1066,7 +825,6 @@ printf("du client %d sur le FD %d \n",input->data[1],socket_fd)
 
 
       int *ressAllouerClient = (*allouer.data)[j].ressClient;
-
 
       if (assezRessPourMax == nbRessources){
        
@@ -1084,17 +842,57 @@ printf("du client %d sur le FD %d \n",input->data[1],socket_fd)
           ressBesoinClient[i]= ressBesoinClient[i] - ressourcesDem[i];
         }
       }
-      
-
-      free(ressourcesDem);
 
       pthread_mutex_unlock(&lockAllouer);
       pthread_mutex_unlock(&lockResLibres); 
-      //printf("va unlock le tableau des besoins\n");
       pthread_mutex_unlock(&lockBesoin);
-      free(ressourcesDem);
-              freeValues(args, input);
-      break;
+          myfree(input,ressourcesDem);
+}
+
+int st_process_requests (server_thread * st, int socket_fd){
+    char message[25];
+
+    while (true){
+    printf("Server %d about to receive process et socket_fd = %d \n",st->id, socket_fd);
+
+    if (recv (socket_fd, message, 50,0)<0){
+        printf("ERR mauvaise commande");
+        return -1;
+    }
+    printf("Server %d a recu : %s \n", st->id, message);
+    size_t msize = sizeof(message);
+    char copy[msize];
+    strncpy(copy, message, msize);
+    struct array_t_string *input= parseInput(message);
+    printf("du client %d sur le FD %d \n",input->data[1],socket_fd);
+
+
+	printf("Server %d a recu : %s du client %d sur le FD %d \n", st->id, copy,input->data[1],socket_fd);
+    if(strcmp(input->data[0],"END") == 0){
+      printf("Ending server..");
+      delete_array_string(input);
+      return -2;
+    }
+
+    if(!verifiePremierArgs(input, socket_fd)){
+        delete_array_string(input); 
+        return -1; 
+    }
+
+    if( strcmp(input->data[0],"INI") == 0){
+        printf("rentre dans INI Server %d Client %d FD %d \n", st->id, socket_fd);
+        int *ressourcestemp = calloc(nbRessources, sizeof(int));
+        int tidClient = atoi(input->data[1]);
+        int longueur = 2;
+        checkIni(longueur,tidClient, input,ressourcestemp, socket_fd);
+        
+    }
+    else if (strcmp(input->data[0],"REQ") == 0){
+      int *ressourcesDem = calloc(nbRessources, sizeof(int));
+      int tidClient = atoi(input->data[1]);
+      int longueur = 2;
+      checkReq(longueur, tidClient, input, ressourcesDem, socket_fd);
+ 
     }
 
     else if(strcmp(input->data[0],"CLO") == 0){
@@ -1103,16 +901,8 @@ printf("du client %d sur le FD %d \n",input->data[1],socket_fd)
       clients_ended += 1;
       pthread_mutex_unlock(&lockClientEnd);      
 
-      //int tidClient = valeur;
-     /* struct reponse retour;
-      retour= verifiePremierArgs(args,args_len,socket_r,socket_w);x
-
-      if (retour.erreur == true){
-          break;
-        }*/
 
       int tidClient = atoi(input->data[1]);
-     // free(cmd);
       pthread_mutex_lock(&lockAllouer);
       int positionAllouer = 0;
 
@@ -1125,7 +915,7 @@ printf("du client %d sur le FD %d \n",input->data[1],socket_fd)
       }
 
       if (positionAllouer == nbRessources){
-        sendErreur("ERR le client n'a pas ete initiliase",socket_w);   
+        printf("ERR le client n'a pas ete initiliase");   
         pthread_mutex_unlock(&lockAllouer);
         break;
       }
@@ -1138,7 +928,6 @@ printf("du client %d sur le FD %d \n",input->data[1],socket_fd)
       pthread_mutex_unlock(&lockResLibres);
       allouer = deleteClientInArray(&allouer,tidClient);
       pthread_mutex_unlock(&lockAllouer);
-      //printf("va unlock le tableau des besoins\n");
       pthread_mutex_lock(&lockBesoin);
 
       besoin = deleteClientInArray(&besoin,tidClient);
@@ -1157,33 +946,20 @@ printf("du client %d sur le FD %d \n",input->data[1],socket_fd)
 
       pthread_mutex_unlock(&lockCouDispa);
 
-      sendAck(socket_w,tidClient);
+      sendAck(socket_fd);
     }
 
     else{
-      //free(cmd);
-      sendErreur("ERR commande inconnu",socket_w); 
+      printf("ERR commande inconnu"); 
       delete_array_string(input);
-      free(args);
       break;  
     }        
-   //}
-
-    /*if (!args || cnt < 1 || args[cnt - 1] != '\n')//le buffer args est vide ou j'ai moins de 1 caractère qui a été écrit et ou mon dernier caractère n'est pas égale à une fin de ligne
-	    {
-	      printf ("Thread %d received incomplete cmd=%s!\n", st->id, cmd);
-	      break;
-	    }*/
-
-   		// printf ("Thread %d received the command: %s%s", st->id, cmd, args);
-
-   	 //fprintf (socket_w, "ERR Unknown command\n");
-  	 // free (args);
+  
 }
 
-fclose (socket_r);
-fclose (socket_w);
-  // TODO end
+//fclose (socket_r);
+//fclose (socket_w);
+
 }
 
 
