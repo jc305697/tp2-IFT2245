@@ -5,6 +5,9 @@ TIMEOUT=10
 VALGRIND=valgrind --leak-check=yes --error-exitcode=1
 CC=gcc
 CFLAGS=-g -std=gnu99 -Wall -pedantic -D_REENTRENT=1
+ifdef BEG_PRO_ATOMIC
+CFLAGS += -DBEG_PRO_ATOMIC
+endif
 LDFLAGS=-pthread
 
 CLT_O = main.o client_thread.o
@@ -46,13 +49,13 @@ run-server: all
 run-client: all
 	@$(BUILD_DIR)/tp2_client 2018 5 50   10 4 23 1 2
 
-run-server-valgrind: all
+run-valgrind-server: all
 	$(VALGRIND) $(BUILD_DIR)/tp2_server 2018
 
 run-server-gdb: all
 	gdb --args  $(BUILD_DIR)/tp2_server 2018
 
-run-client-valgrind: all
+run-valgrind-client: all
 	$(VALGRIND) $(BUILD_DIR)/tp2_client 2018 5 50   10 4 23 1 2 
 
 run-client-gdb: all
