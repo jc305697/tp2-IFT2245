@@ -129,7 +129,6 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
 		perror("Buffer marche po");
 		exit(1);
 	}*/
-    ssize_t cnt= -1;
 
     size_t args_len = 0;
     

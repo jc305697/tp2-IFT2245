@@ -325,7 +325,6 @@ struct array_t_string *parseInputGetLine(char *input){
   pthread_mutex_lock(&lockStrTock);
   char *token =strtok(input,"\n");
   pthread_mutex_unlock(&lockStrTock);
-  printf("token = %s\n", token);
 
   struct array_t_string *array = new_arrayString(5);
 
@@ -343,7 +342,6 @@ struct array_t_string *parseInputGetLine(char *input){
   		perror("parseinputgetline");
   	}
   	token = strtok(NULL," ");
-  	printf("token while = %s\n", token);
   	 i +=1;
   }
 
@@ -361,25 +359,20 @@ void freeValues(char *args, struct array_t_string *input){
     free(args);
     delete_array_string(input);
 }
-
 void attendBeg( socklen_t socket_len ){
   int socketFd = -1;
   bool bonneCommande = false;
 
   printf("Server dans le BEG \n");
   while(!bonneCommande){
-    /*while( socketFd == -1) { 
+    while( socketFd == -1) { 
       // attend le beg 
       socketFd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
     }
     nbClients+=1;
     int retour = fcntl(socketFd,F_GETFL);
     //printf("%s\n", );
-    fcntl(socketFd,F_SETFL,retour& ~O_NONBLOCK);*/
-
-    while(socketFd == -1){
-    	socketFd = st_wait();
-    }
+    fcntl(socketFd,F_SETFL,retour& ~O_NONBLOCK);
 
     
    /* printf("Server accepted connexion from : %s \n", &thread_addr);
@@ -467,15 +460,11 @@ void attendPro(socklen_t socket_len){
   bool bonneCommande = false;
   printf("Server attend le pro \n");
   while(!bonneCommande){
-  	 /*socket_fd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
+  	 socket_fd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
 
     while( socket_fd == -1) { 
       // attend le beg 
       socket_fd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
-    }*/
-
-     while(socket_fd == -1){
-    	socket_fd = st_wait();
     }
     
     FILE *socket_r = fdopen (socket_fd, "r");
@@ -488,14 +477,6 @@ void attendPro(socklen_t socket_len){
        //ssize_t cnt = getline (&args, &args_len, socket_r);
    // ssize_t cnt = getdelim (&args, &args_len,(int)' ', socket_r);
     printf("Right before getline \n");
-
-
-   /* char cmd[4] = {NUL, NUL, NUL, NUL};
-    if (!fread (cmd, 3, 1, socket_r)){
-       printf( "%s\n",cmd );
-      break;
-    }*/
-    
     if(getline(&args,&args_len,socket_r) == -1){
 
       sendErreur("ERR mauvaise commande",socket_w);
@@ -835,7 +816,6 @@ void st_process_requests (server_thread * st, int socket_fd){
     
     char *args = NULL; size_t args_len = 0;
     printf("About to getline Client %d \n", socket_fd);
-    fflush(stdout);
     if(getline(&args,&args_len,socket_r) == -1){//lit ce que le client envoie 
       //getline renvoie que il y a une erreur 
       sendErreur("ERR mauvaise commande",socket_w);
@@ -845,7 +825,7 @@ void st_process_requests (server_thread * st, int socket_fd){
       }
       break;
     }
-	printf("Server a recu : %s du client %d \n",args,socket_fd);
+printf("Server a recu : %s du client %d \n",args,socket_fd);
     //printf("va parser l'input\n");
     struct array_t_string *input= parseInputGetLine(args);
     imprimeArrayString(input);
@@ -1225,7 +1205,8 @@ void *st_code (void *param){
   int thread_socket_fd = -1;
   //printf("rentre dans stcode\n");
   // Boucle de traitement des requêtes.
-  while (accepting_connections){
+  while (accepting_connections)
+  {
     // Wait for a I/O socket.
     printf("Server commence le wait\n");
     thread_socket_fd = st_wait();
