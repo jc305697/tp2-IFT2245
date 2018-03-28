@@ -120,7 +120,7 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
     FILE *socket_w = fdopen(socket_fd, "w");
     fprintf(socket_w, "%s", message);
     fflush(socket_w);
-    //printf("Message sent \n");
+    printf("Message sent = %s \n",message);
     
     
     FILE *socket_r = fdopen(socket_fd, "r");
@@ -133,8 +133,8 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
     size_t args_len = 0;
     
     printf("Client %d waiting for response..\n", socket_fd);
-
-    ssize_t cnt = getline(&args, &args_len, socket_r);
+     
+    ssize_t cnt = getline(&args, &args_len, socket_r);//peut mettre dans un while tant que cnt = -1
     printf("Client %d received %s \n", socket_fd, args);
     switch (cnt) {
         case -1:
