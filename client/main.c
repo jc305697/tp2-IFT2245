@@ -12,13 +12,7 @@ int main (int argc, char *argv[])
     exit (1);
   }
 
-
-    //TODO: Faire l'envoie parametres
-    //TODO: Envoyer les requetes ensuite
-        //TODO: Creer les mini INIT
-        //TODO:
   port_number = atoi (argv[1]);
-  //int num_clients = atoi (argv[2]);
   num_clients = atoi (argv[2]);
   num_request_per_client = atoi (argv[3]);
     num_resources = argc - 4;
@@ -27,6 +21,7 @@ int main (int argc, char *argv[])
   provisioned_resources = malloc (num_resources * sizeof (int));
   for (unsigned int i = 0; i < num_resources; i++)
     provisioned_resources[i] = atoi (argv[i + 4]);
+  
   int socket_test = client_connect_server();
   ct_start();
   bool res = send_config(socket_test);
@@ -61,21 +56,16 @@ int main (int argc, char *argv[])
 
   return EXIT_SUCCESS;
 }
-/*void flushmoica(){
-    fflush(stdout);
-}*/
-//TODO: Pas mettre chiffres fixes
 bool send_config(int socket_fd){
     int retour;
     char temp[10];
     char beg[50] = "BEG ";
     sprintf(temp,"%d",num_resources); 
     strcat(beg,temp);
-    strcat(beg, "\n");
+    strcat(beg, " \n");
     char *toSend = beg;
 
-    printf("VOICI CE QUE JE VEUX SEND %s \n",toSend);
-    flushmoica();
+    printf("Je veux envoyer : %s \n",toSend);
     retour = send_request(0,0,socket_fd,toSend);
     close(socket_fd);
     if (retour == 0 ){
@@ -84,15 +74,14 @@ bool send_config(int socket_fd){
     //Send le pro
     socket_fd = client_connect_server();
     sprintf(toSend,"%s","PRO ");
-    printf("JE SUIS RENDU AU PRO \n");
+    printf("Je veux envoyer le pro \n");
     char append[50];
     for (int i=0;i<num_resources;i++){
         sprintf(append,"%d",provisioned_resources[i]); // put the int into a string
         strcat(toSend, append); // modified to append string
-        //strcat(toSend,provisioned_resources[num_resources]);
         strcat(toSend, " ");
     }
-    strcat(toSend, "\n");
+    strcat(toSend, " \n");
     retour = send_request(0,1,socket_fd,toSend);
 
     printf("close le socket \n");

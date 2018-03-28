@@ -28,6 +28,7 @@ struct client_thread
   unsigned int id;
   pthread_t pt_tid;
   pthread_attr_t pt_attr;
+  int initressources[];
 };
 
 int send_request (int client_id, int request_id, int socket_fd,char* message);
@@ -41,7 +42,6 @@ int client_connect_server();
 void ct_init (client_thread *);
 void ct_create_and_start (client_thread *);
 void ct_wait_server ();
-void flushmoica();
 void st_print_results (FILE *, bool);
 
 #endif // CLIENTTHREAD_H
