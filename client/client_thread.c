@@ -1,6 +1,5 @@
 /* This `define` tells unistd to define usleep and random.  */
 #define _XOPEN_SOURCE 500
-
 //MARCHE PAS?? #include "../array/dyn\_array.h"
 #include "client_thread.h"
 #include <arpa/inet.h>
@@ -35,7 +34,12 @@ unsigned int count_dispatched = 0;                      //ACK reçu en réponse 
 
 // Nombre total de requêtes envoyées.
 unsigned int request_sent = 0;
- 
+
+pthread_mutex_t lockCount_acc;
+pthread_mutex_t lockCount_wait;
+pthread_mutex_t lockCount_inv;
+pthread_mutex_t lockCount_disp;
+pthread_mutex_t lockReqSent;
 
 pthread_mutex_t lockCount_acc;
 pthread_mutex_t lockCount_wait;
@@ -109,7 +113,6 @@ int make_random_req(int max_resources){
 	{
 		return nombre * -1;
 	}
-
 	return nombre;
 }
 
@@ -119,6 +122,7 @@ void lockIncrUnlock(pthread_mutex_t mymutex, int count){
     pthread_mutex_unlock(&lockCount_acc);
 }
 
+
 // Vous devez modifier cette fonction pour faire l'envoie des requêtes
 // Les ressources demandées par la requête doivent être choisies aléatoirement
 // (sans dépasser le maximum pour le client). Elles peuvent être positives
@@ -126,53 +130,68 @@ void lockIncrUnlock(pthread_mutex_t mymutex, int count){
 // Assurez-vous que la dernière requête d'un client libère toute les ressources
 // qu'il a jusqu'alors accumulées.
 int 
-send_request (int client_id, int request_id, int socket_fd,char* message){
-    
-    if (message == NULL){
+send_request (int client_id, int request_id, int socket_fd,char* message) {
+   if (message == NULL){
         printf("Erreur, message vide");    
-        return -1;
+        return 0;
     }
 
     printf("Client %d attempting to send %s \n",client_id,message);
 
-    if (send (socket_fd, message, strlen(message),0)<0){
-        printf("Send failed");
-        return -1;
-    }
+    FILE *socket_w = fdopen(socket_fd, "w");
+    fprintf(socket_w, "%s", message);
+    fflush(socket_w);
+    printf("Message sent = %s \n",message);
     
-    printf("Client %d waiting for response..\n", client_id);
+    
+    FILE *socket_r = fdopen(socket_fd, "r");
+    char* args;
+    size_t args_len = 0;
+    
+    printf("Client %d waiting for response..\n", socket_fd);
+     
+    ssize_t cnt = getline(&args, &args_len, socket_r);//peut mettre dans un while tant que cnt = -1
+    printf("Client %d received %s \n", socket_fd, args);
+    switch (cnt) {
+        case -1:
+            perror("Erreur réception client \n");
+            return 0;
+            break;
+        default:
 
-    if (recv (socket_fd, message, 50,0)<0){
-        printf("Receive failed");
-        return -1;
+            break;
     }
-    printf("Client %d received %s \n", client_id, message);
-    size_t msize = sizeof(message);
-    char copy[msize];
-    strncpy(copy, message, msize);
+   
+    printf("Client %d close le stream \n", socket_fd);
+    fclose(socket_w);
+    fclose(socket_r);
+    //struct array_t_string* input = parseInput(copy);
+    if (strcmp(args,"ACK")){
+      printf("je suis dans le lock");
+	  lockIncrUnlock(lockCount_acc,count_accepted);
+      printf("je viens de quitter le lock");
+      return 1;
 
-    struct array_t_string* input = parseInput(message);
-    while (true){
-      if (strcmp(input->data[0],"ACK")){
-    	lockIncrUnlock(lockCount_acc,count_accepted);
-        return 1;
+    }else{
+	  if (strstr(args,"ERR")){
+         printf("je suis dans err");
+    	 lockIncrUnlock(lockCount_inv,count_invalid);
+         //printf("Commande invalide %s \n", input->data[1]);
+         printf("Commande invalide %s \n", args);
 
-      }else{
-    	if (strstr(input->data[0],"ERR")){
-        	lockIncrUnlock(lockCount_inv,count_invalid);
-            printf("Commande invalide %s \n", input->data[1]);
-
-    	}else if(strstr(input->data[0],"WAIT")){
-            lockIncrUnlock(lockCount_wait,count_on_wait);
-            sleep(input->data[1]);
-            send_request (client_id, request_id, socket_fd, copy);
-    	}else{
-            printf("Invalid protocol action");
-        }
-        return 0;
+	  }else if(strstr(args,"WAIT")){
+         lockIncrUnlock(lockCount_wait,count_on_wait);
+         //struct array_t_string* input = parseInput(test);
+        //TODO: Trouver une manière d'aller fetch deuxieme arg san changer input
+         sleep(1);
+         //send_request (client_id, request_id, socket_fd, args);
+	  }else{
+         printf("Invalid protocol action");
       }
+      return 0;
     }
 }
+
 
 struct array_t_string *parseInput(char *input){
   char *token =strtok(input,"\n");
@@ -189,8 +208,10 @@ struct array_t_string *parseInput(char *input){
   return array;
 }
 
+
+//Basé sur https://www.thegeekstuff.com/2011/12/c-socket-programming/?utm_source=feedburner
 int client_connect_server(){
-    printf("Un client essaie de créer un socket \n");
+     printf("Un client essaie de créer un socket \n");
     int client_socket_fd=-1;
 
     //Crée un socket via addresse IPV4 et TCP ou UDP
@@ -244,8 +265,8 @@ void make_request(client_thread* ct ){
         //Derniere requete
         if (request_id == (num_request_per_client-1)){
             for (int i = 0; i < count; ++i){
-  			    sprintf(append," %d",ct->initressources[i]); 
-        	    strcat(message, append);
+  			    //sprintf(append," %d",ct->initressources[i]); 
+        	    //strcat(message, append);
   		    }
         }else{
   		    for (int i = 0; i < count; ++i){
@@ -262,30 +283,33 @@ void make_request(client_thread* ct ){
     	else{
 	    		printf("Client %d - ACK RECEIVED \n", client_socket_fd);
                 for (int i = 0; i < num_resources; i++){
-                    ct->initressources[i] -= temp[i];
+                    //ct->initressources[i] -= temp[i];
                 }
     	}
     	close(client_socket_fd);	
   }
 }
 
-void * ct_code (void *param){
+void* ct_code (void *param){
     int client_socket_fd = client_connect_server();
     client_thread *ct = (client_thread *) param;
 
     //Initialise le client
     char message[50]="INI";
-    char append[5];
+    char append[25];
     sprintf(append," %d",ct->id); // put the int into a string
     strcat(message, append);
 
-    memset(append, 0, sizeof append);
+    //Choisit valeurs max de façon random
     for (int i =0; i < num_resources;i++){
+        memset(append, 0, sizeof(append));
         sprintf(append," %d",make_random(provisioned_resources[i])); // put the int into a string
         strcat(message, append); // modified to append string
     }
+    strcat(message, " \n");
+
+
     //Envoie la requête INI
-    
     if (send_request(ct->id,-1,client_socket_fd,message) != 1){
     	printf("Client %d FD %d - ACK NOT RECEIVED \n", ct->id, client_socket_fd);
     }
@@ -297,14 +321,15 @@ void * ct_code (void *param){
     printf("Closing socket %d for Client %d \n", client_socket_fd, ct->id);
     close(client_socket_fd);
 
-    make_request(ct);
-    
-        
-    client_socket_fd = client_connect_server();
-    sprintf(message,"CLO");
-    sprintf(append," %d",ct->id);
-    strcat(message,append);
+  make_request(ct);
 
+  client_socket_fd = client_connect_server();
+  char message1[50]  = "CLO";
+  char append1[5]; 
+  sprintf(append1," %d",ct->id);
+  strcat(message1,append1);
+  strcat(message1, " \n");
+  
     if(send_request (ct->id, num_request_per_client, client_socket_fd,message) != 0){
        printf("Client %d FD %d - ACK NOT RECEIVED \n", ct->id, client_socket_fd);
      }
@@ -318,8 +343,8 @@ void * ct_code (void *param){
   
     printf("Closing socket %d for Client %d \n", client_socket_fd, ct->id);
     close(client_socket_fd);
+    return NULL;
 }
-
 
 //
 // Vous devez changer le contenu de cette fonction afin de régler le
@@ -343,7 +368,7 @@ void ct_init (client_thread * ct)
 {
   ct->id = count++;
   for (int i = 0; i < num_resources; i++){
-    ct->initressources[i] = 0;      
+    //ct->initressources[i] = 0;      
   }
 }
 
