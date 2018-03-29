@@ -1,6 +1,6 @@
 /* This `define` tells unistd to define usleep and random.  */
 #define _XOPEN_SOURCE 700
-#include "../array/dyn_array.h"
+#include "../array/dyn_array.c"
 #include "client_thread.h"
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -15,7 +15,7 @@ int num_clients = 0;
 int num_request_per_client = -1;
 int num_resources = -1;
 int *provisioned_resources = NULL;
-struct array_t_string *parseInput(char *input);
+struct array_t *parseInput(char *input);
 // Variable d'initialisation des threads clients.
 unsigned int count = 0;
 
@@ -60,48 +60,6 @@ void ct_start(){
 		perror("Erreur init mutex pour nombre de client terminé");
 }
 
-//TEST ARRAY//
-struct array_t_string{
-  size_t size, capacity;
-  char **data;
-};
-
-struct array_t_string *new_arrayString (size_t capacity) {
-  struct array_t_string *newA = malloc(sizeof(*newA));
-  if (!newA) {
-    return NULL;
-  }
-
-    newA->capacity = capacity;
-    newA->size = 0;
-    newA->data = malloc(capacity*sizeof(char *));
-
-  if(!newA->data) {
-    free(newA);
-    newA = NULL;
-  }
-  return newA;
-}
-
-
-int push_backString(struct array_t_string *array, char *element) {
-  if (array->size > (array->capacity - 2)) {
-    size_t newsize = array->capacity << 1;
-    char  **tmp = (char **)realloc(array->data, newsize*sizeof(char *));
-   
-    if (!tmp) {
-      perror("pushBackString");
-      return -1;
-    }
-    array->capacity = newsize;
-    array->data = tmp; 
-  }
-  array->data[array->size] = element;
-  array->size++;
-  return 0; 
-}
-
-//FIN TEST TABLEAU//
 
 int make_random(int max_resources){
     return rand() % (max_resources+1);// fait + 1 pour povoir demander le maximum d'une ressource
@@ -168,7 +126,7 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
     printf("Client %d close le stream %d \n", client_id, socket_fd);
     fclose(socket_w);
     fclose(socket_r);
-    //struct array_t_string* input = parseInput(copy);
+    //struct array_t* input = parseInput(copy);
     if (strcmp(args,"ACK")){
       //printf("je suis dans le lock");
 	  lockIncrUnlock(lockCount_acc,count_accepted);
@@ -184,7 +142,7 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
 
 	  }else if(strstr(args,"WAIT")){
          lockIncrUnlock(lockCount_wait,count_on_wait);
-         //struct array_t_string* input = parseInput(test);
+         //struct array_t* input = parseInput(test);
         //TODO: Trouver une manière d'aller fetch deuxieme arg san changer input
          sleep(1);
          //send_request (client_id, request_id, socket_fd, args);
@@ -196,13 +154,13 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
 }
 
 
-struct array_t_string *parseInput(char *input){
+struct array_t *parseInput(char *input){
   char *token =strtok(input,"\n");
-  struct array_t_string *array = new_arrayString(5);
+  struct array_t *array = new_array(5);
   token = strtok(token," ");
   int i =0;
   while(token != NULL){
-  	if(push_backString(array,token)==-1){
+  	if(push_back(array,token)==-1){
   		perror("PARSE ERROR");
   	}
   	token = strtok(NULL," ");
