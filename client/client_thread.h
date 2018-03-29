@@ -28,7 +28,8 @@ struct client_thread
   unsigned int id;
   pthread_t pt_tid;
   pthread_attr_t pt_attr;
-  //int initressources[];
+  int *initressources;
+  int *initmax;
 };
 
 int send_request (int client_id, int request_id, int socket_fd,char* message);

@@ -25,8 +25,8 @@ int main (int argc, char *argv[])
   int socket_test = client_connect_server();
   ct_start();
   int res = send_config(socket_test);
-  printf("send_config est termine \n");
-  printf("%d \n",res);
+  //printf("send_config est termine \n");
+  //printf("%d \n",res);
     if (res){
 
 
@@ -39,7 +39,7 @@ int main (int argc, char *argv[])
     for (unsigned int i = 0; i < num_clients; i++){ 
         ct_create_and_start (&(client_threads[i]));
 }
-printf("before waiting \n");
+//printf("before waiting \n");
   ct_wait_server ();
     }else{
         printf("Erreur au niveau de BEG/PRO");
@@ -66,7 +66,7 @@ bool send_config(int socket_fd){
     strcat(beg, " \n");
     char *toSend = beg;
 
-    printf("VOICI CE QUE JE VEUX SEND %s \n",toSend);
+    //printf("VOICI CE QUE JE VEUX SEND %s \n",toSend);
     retour = send_request(0,0,socket_fd,toSend);
     close(socket_fd);
     if (retour == 0 ){
@@ -75,7 +75,7 @@ bool send_config(int socket_fd){
     //Send le pro
     socket_fd = client_connect_server();
     sprintf(toSend,"%s","PRO ");
-    printf("JE SUIS RENDU AU PRO \n");
+    //printf("JE SUIS RENDU AU PRO \n");
     char append[50];
     for (int i=0;i<num_resources;i++){
         sprintf(append,"%d",provisioned_resources[i]); // put the int into a string
