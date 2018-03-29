@@ -674,7 +674,7 @@ void st_process_requests (server_thread * st, int socket_fd){
       }
       break;
     }
-	printf("Server a recu : %s du client %d \n",args,socket_fd);
+	  printf("Server a recu : %s du client %d \n",args,socket_fd);
     struct array_t_string *input= parseInput(args);
     imprimeArrayString(input);
 
@@ -937,33 +937,43 @@ void st_process_requests (server_thread * st, int socket_fd){
         break;
       }
 
-      pthread_mutex_lock(&lockResLibres);
+      //pthread_mutex_lock(&lockResLibres);
       int ressource = 0;
-      while(ressource != nbRessources){//je rajoute les ressources allouer aux ressources lbres
+      /*while(ressource != nbRessources){//je rajoute les ressources allouer aux ressources lbres
         ressourcesLibres[ressource] += (*allouer.data)[positionAllouer].ressClient[ressource];
+      }*/
+      bool erreur= false;
+      while(ressource != nbRessources){
+        if ((*allouer.data)[positionAllouer].ressClient[ressource] !=0 )
+        {
+          sendErreur("ERR il reste des ressource qui sont encore allouer",socket_w);
+          erreur =true;
+          pthread_mutex_unlock(&lockAllouer);
+          break;
+        }
       }
-      pthread_mutex_unlock(&lockResLibres);
-      allouer = deleteClientInArray(&allouer,tidClient);
-      pthread_mutex_unlock(&lockAllouer);
-      pthread_mutex_lock(&lockBesoin);
+     // pthread_mutex_unlock(&lockResLibres);
+      if (!erreur){//je n'ai pas d'erreur
+        allouer = deleteClientInArray(&allouer,tidClient);
+        pthread_mutex_unlock(&lockAllouer);
+        
+        pthread_mutex_lock(&lockBesoin);
+        besoin = deleteClientInArray(&besoin,tidClient);
+        pthread_mutex_unlock(&lockBesoin);
 
-      besoin = deleteClientInArray(&besoin,tidClient);
+        pthread_mutex_lock(&lockMax);
+        max = deleteClientInArray(&max,tidClient);
+        pthread_mutex_unlock(&lockMax);
 
-      pthread_mutex_unlock(&lockBesoin);
+        pthread_mutex_lock(&lockCouDispa);//count_dispatched
+        count_dispatched += 1;
+        pthread_mutex_unlock(&lockCouDispa);
 
-      pthread_mutex_lock(&lockMax);
+        sendAck(socket_w,tidClient);
+      }
 
-      max = deleteClientInArray(&max,tidClient);
 
-      pthread_mutex_unlock(&lockMax);
-
-      pthread_mutex_lock(&lockCouDispa);
-      //count_dispatched
-      count_dispatched += 1;
-
-      pthread_mutex_unlock(&lockCouDispa);
-
-      sendAck(socket_w,tidClient);
+      
     }
 
     else{
