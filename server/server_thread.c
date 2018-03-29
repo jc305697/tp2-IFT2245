@@ -34,7 +34,7 @@ pthread_mutex_t lockClientWait;//Clients a qui j'ai dit de wait
 pthread_mutex_t lockBesoin; 
 pthread_mutex_t locknbChaqRess;
 pthread_mutex_t lockBanker;
-pthread_mutex_t lockStrTock;
+
 
 
 int server_socket_fd;
@@ -198,7 +198,7 @@ void sendErreur(const char *message, FILE *socket_w){
   //char mymessage[50];
   //sprintf(mymessage,"ERR %s", message);
   //fprintf (socket_w, "%s", mymessage);
-fprintf (socket_w, "%s", message);
+  fprintf (socket_w, "%s", message);
   fflush(socket_w);
 
   pthread_mutex_lock(&lockCouInvalid);
@@ -279,26 +279,29 @@ void sendAck(FILE *socket_w, int clientTid){
 }
 
 struct array_t_string *parseInput(char *input){
-  pthread_mutex_lock(&lockStrTock);
-  char *token =strtok(input,"\n");
-  pthread_mutex_unlock(&lockStrTock);
+  char *reste;
+
+  char *token = strtok_r(input,"\n",&reste);
 
   struct array_t_string *array = new_arrayString(5);
 
-  pthread_mutex_lock(&lockStrTock);
-  token = strtok(token," ");
-
-  int i =0;
-
-  while(token != NULL){
-  	if(push_backString(array,token)==-1){
+  char *reste1; 
+  token = strtok_r(token," ",&reste1);
+  if(push_backString(array,token)==-1){
   		perror("parseInput");
   	}
-  	token = strtok(NULL," ");
-  	 i +=1;
-  }
+  int i =0;
+  //inspirer par https://stackoverflow.com/questions/2227198/segmentation-fault-when-using-strtok-r?newreg=89b070f8caf842f69e47b0b4774f7748
+  while(token != NULL){
+  	token = reste1;
 
-  pthread_mutex_unlock(&lockStrTock);
+  	token = strtok_r(token," ",&reste1);
+  	 i +=1;
+  	 if(token != NULL && push_backString(array,token)==-1){
+  		perror("parseInput");
+  	}
+
+  }
   return array;
 }
 
@@ -473,8 +476,6 @@ void attendPro(socklen_t socket_len){
   } 
 }
 
-
-
 static void sigint_handler(int signum){
   // Code terminaison.
   printf("je recois un signal d'interruption\n");
@@ -492,9 +493,7 @@ void st_init (){
   // Initialise le nombre de clients connecté.
   nb_registered_clients = 0;
 
-  if (pthread_mutex_init(&lockStrTock,NULL))
-    perror("erreur mutex nombre de client");//send au client ?
-  if (pthread_mutex_init(&lockNbClient,NULL))
+  if (pthread_mutex_init(&lockNbClient,NULL))//send au client ?
     perror("erreur mutex nombre de client");
   if (pthread_mutex_init(&lockResLibres,NULL))
     perror("erreur mutex nombre de ressources libres");
@@ -582,10 +581,6 @@ bool commEND (FILE *socket_r,FILE *socket_w){
         pthread_mutex_destroy(&lockResLibres);
         pthread_mutex_unlock(&locknbChaqRess);
         pthread_mutex_destroy(&locknbChaqRess);
-
-        pthread_mutex_lock(&lockStrTock);
-        pthread_mutex_unlock(&lockStrTock);
-        pthread_mutex_destroy(&lockStrTock);
 
         pthread_mutex_lock(&lockClientWait);
         delete_array(&clientQuiWait);
