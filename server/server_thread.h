@@ -18,7 +18,7 @@
 
 #include <stddef.h>
 
-struct array_t *new_array (size_t capacity);
+struct Client *new_arrayClient(int taille);
 void for_each(struct array_t *array, void (*callback)(void*));
 int push_back(struct array_t *array, void *element);
 void delete_array_callback(struct array_t **array, void (*callback)(void*));

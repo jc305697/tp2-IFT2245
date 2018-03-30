@@ -61,7 +61,7 @@ bool send_config(int socket_fd){
     int retour;
     char temp[10];
     char beg[50] = "BEG ";
-    sprintf(temp,"%d",num_resources); 
+    sprintf(temp,"%d %d",num_resources,num_clients); 
     strcat(beg,temp);
     strcat(beg, " \n");
     char *toSend = beg;
