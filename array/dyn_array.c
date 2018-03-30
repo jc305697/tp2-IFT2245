@@ -64,23 +64,6 @@ struct array_t_string{
 };
 
 
-int estDansListe(struct array_t *liste,int clientTid){
-    //TODO: Adapter ceci
-    /*
-    if(liste){
-        for (int i=0;i < (*liste).size; ++i){
-            if (liste[i]->tid == clientTid){
-                return 1;
-            }
-        }
-        return 0;
-    }
-    return 0;
-*/
-return 1;
-}
-
-
 struct array_t_string *new_arrayString (size_t capacity) {
   struct array_t_string *newA = malloc(sizeof(*newA));
   if (!newA) {
