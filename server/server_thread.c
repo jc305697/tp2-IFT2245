@@ -187,7 +187,7 @@ void sendErreur(const char *message, FILE *socket_w){
 }
 
 void sendWait(int temps,FILE *socket_w,int tidClient){
- printf("Serveur va envoyer WAIT %d \n",temps);
+ printf("Serveur va envoyer WAIT %d avec socket_w = %d\n",temps,socket_w);
  fprintf (socket_w, "Wait %d",temps);
  fflush(socket_w);
 
@@ -394,6 +394,7 @@ void attendBeg( socklen_t socket_len ){
 
          sendAck(socket_w,-1);
          delete_array_string(input);
+         free(args);
          closeStream(socket_r, socket_w);
          break;
        }
@@ -738,7 +739,7 @@ void st_process_requests (server_thread * st, int socket_fd){
 
     else if (strcmp(input->data[0],"REQ") == 0){
       //free(cmd);
-      int *ressourcesDem = calloc(nbRessources, sizeof(int));
+      int *ressourcesDem = calloc(nbRessources+1, sizeof(int));
       
       int tidClient = atoi(input->data[1]);
       //int tidClient = valeur;
@@ -760,7 +761,6 @@ void st_process_requests (server_thread * st, int socket_fd){
         }
 
         else{*/
-
           ressourcesDem[longueur] = valeur;
           longueur = longueur + 1;
         //}       
