@@ -162,8 +162,8 @@ void closeStream(FILE *sockr, FILE *sockw){
 }
 
 void freeValues(char *args, struct array_t_string *input){
-    free(args);
-    delete_array_string(input);
+    if (args) {free(args);}
+    if (input) {delete_array_string(input);}
 }
 
 void fillMatrix(){
@@ -179,22 +179,22 @@ void fillMatrix(){
 
 
 void st_banker(int tidClient, struct array_t_string *input, FILE* socket_w){
+    printf("Le banquier commence \n");
     pthread_mutex_lock(&lockBanker);
       //Valid format
       for (int i=0; i<nbRessources;i++){
 
             if (atoi(input->data[i+2]) > 0){
-
+                printf("BANQUIER : DEMANDE %d | DEJA ALLOUE : %d | MAX CLIENT : %d \n",atoi(input->data[i+2]), allocated[tidClient][i], max[tidClient][i]);
                 //Ask + allocated doit être <= max
                 if (
-                    (allocated[atoi(input->data[tidClient])][i] + 
+                    (allocated[tidClient][i] + 
                               atoi(input->data[i+2])) >
-                              max[atoi(input->data[tidClient])][i]
+                              max[tidClient][i]
                     ){
                     sendErreur("Une valeur demandée trop haute", socket_w);
                     pthread_mutex_unlock(&lockBanker);
                     printf("BANKER - REQ DENIED FOR CLIENT %d \n",tidClient);
-                    cleanBanker(input,socket_w);
                     return;
                 }
 
@@ -204,18 +204,16 @@ void st_banker(int tidClient, struct array_t_string *input, FILE* socket_w){
                     printf("BANKER - REQ MUST WAIT FOR CLIENT %d \n", tidClient);
                     count_wait++;
                     sendWait(max_wait_time,socket_w,tidClient);
-                    cleanBanker(input,socket_w);
                     return;
                 }
 
 
             //Req nombre négatif
             }else if (atoi(input->data[i+2]) < 0){
-                if (atoi(input->data[i+2]) > allocated[atoi(input->data[tidClient])][i]){
+                if (atoi(input->data[i+2]) > allocated[tidClient][i]){
                     sendErreur("Une valeur libérée trop haute", socket_w);
                     pthread_mutex_unlock(&lockBanker);
                     printf("BANKER - REQ DENIED FOR CLIENT %d \n",tidClient);  
-                    cleanBanker(input,socket_w); 
                     return;
                 }
             }
@@ -231,10 +229,9 @@ void st_banker(int tidClient, struct array_t_string *input, FILE* socket_w){
 
 
     int safe = stateSafe(tidClient);
-    if (safe){
+    if (!safe){
         count_wait++;
         sendWait(max_wait_time,socket_w,tidClient);
-        cleanBanker(input,socket_w);
     }else{
         count_accepted++;
         sendAck(socket_w,tidClient);
@@ -281,7 +278,6 @@ void openAndGetline(int command, socklen_t socket_len){
           }
           printf("%stest \n", input->data[0]);
           if (strcmp(input->data[0],"BEG\n") !=0){
-              printf("nop \n");
               tag = 1;
               args_len = 0;
               nbRessources = atoi(input->data[1]);
@@ -319,7 +315,7 @@ void openAndGetline(int command, socklen_t socket_len){
     }
   }while (!tag);
   sendAck(socket_w,-1);
-  delete_array_string(input);
+  if (input) {delete_array_string(input);}
   closeStream(socket_r, socket_w);
 }
 
@@ -478,24 +474,27 @@ void st_process_requests (server_thread * st, int socket_fd){
     char *args = NULL; size_t args_len = 0;
     printf("About to getline Client dans process et socket_fd= %d \n", socket_fd);
     if(getline(&args,&args_len,socket_r) == -1){
-      sendErreur("Mauvaise commande",socket_w);
+      sendErreur("Pas reçu de commande",socket_w);
       if (args) {free(args);}
       break;
     }
-	printf("Server a recu : %s du client %d \n",args,socket_fd);
+	printf("Serveur a recu : %s",args,socket_fd);
     struct array_t_string *input= parseInput(args);
-    fflush(stdout);
+    printf("Du client %d \n",atoi(input->data[1]));
 
     if(strcmp(input->data[0],"END") == 0){
+      printf("Serveur a reçu un END \n");
       commEND(socket_r,socket_w);
-      delete_array_string(input);
+      if (input) {delete_array_string(input);}
       if (args) {free(args);}
       break;
     }
-    else if(input->size < 2 ){
-        sendErreur("pas assez d'arguments",socket_w);
-        delete_array_string(input);
+    else if(array_get_size(input)  < 2 ){
+        sendErreur("Pas assez d'arguments",socket_w);
+        if (input) {delete_array_string(input);}
         if (args) {free(args);}
+        fclose (socket_r);
+        fclose (socket_w);
         return;
 
     }else if( strcmp(input->data[0],"INI") == 0){
@@ -505,6 +504,8 @@ void st_process_requests (server_thread * st, int socket_fd){
        for (int i=0; i<nbRessources;i++){
            if (atoi(input->data[i+2]) > available[i]){
                 printf("Demande trop grande \n");
+                fclose (socket_r);
+                fclose (socket_w);
                 return;
            }else{
                 max[tidClient][i] = atoi(input->data[i+2]); 
@@ -513,14 +514,16 @@ void st_process_requests (server_thread * st, int socket_fd){
         }
 
        pthread_mutex_unlock(&lockMax);
-
        sendAck(socket_w,tidClient);
        break;
 
     }else if (strcmp(input->data[0],"REQ") == 0){
+      printf("Serveur rentre dans le REQ \n");
       int tidClient = atoi(input->data[1]);  
       st_banker(tidClient,input, socket_w);
-      freeValues(args, input);
+
+      if (args) {free(args);}
+      if (input) {delete_array_string(input);}
       break;
     }
 
@@ -530,6 +533,8 @@ void st_process_requests (server_thread * st, int socket_fd){
       for(int i=0;i<nbRessources;i++){
             if (allocated[tidClient][i]!=0){
                 printf("Erreur, avant de close doit avoir libéré tout");
+                fclose (socket_r);
+                fclose (socket_w);
                 return;
             }  
       }
@@ -538,7 +543,7 @@ void st_process_requests (server_thread * st, int socket_fd){
     sendAck(socket_w,tidClient);
     }else{
       sendErreur("ERR commande inconnu",socket_w); 
-      delete_array_string(input);
+      if (input) {delete_array_string(input);}
       if (args) {free(args);}
       break;  
     }        
@@ -560,9 +565,8 @@ void *st_code (void *param){
   while (accepting_connections)
   {
     // Wait for a I/O socket.
-    printf("Server commence le wait\n");
     thread_socket_fd = st_wait();
-    printf("Server a accepté le client %d \n", thread_socket_fd);
+    //printf("Serveur a accepté le client FD %d \n", thread_socket_fd);
     if (thread_socket_fd < 0)
     {
       fprintf (stderr, "Time out on thread %d.\n", st->id);//reesaye plus tard
@@ -572,24 +576,25 @@ void *st_code (void *param){
     if (thread_socket_fd > 0)//si j'ai eu une requete
     {
  
-      printf("Server va process la requête de %d \n", thread_socket_fd);
+      printf("Serveur va process la requête du FD %d \n", thread_socket_fd);
       st_process_requests (st, thread_socket_fd);
 
       close (thread_socket_fd);
     }
   }
-  printf("fin de st_code\n");
+  //printf("fin de st_code\n");
   return NULL;
 }
 
 void cleanBanker(struct array_t_string *input, FILE* socket_w){
-    delete_array_string(input);
+    if (input) {delete_array_string(input);}
     fclose(socket_w);
 
 }
 
 //Algo inspiré de geeksforgeeks.org/operating-system-bankers-algorithm
 int stateSafe(struct array_t_string *input,int tidClient){
+    printf("Banquier vérifie l'état.. \n");
     int work[nbRessources];
     //TODO
     int finish[nbClients];
@@ -638,12 +643,8 @@ int stateSafe(struct array_t_string *input,int tidClient){
             allocated[tidClient][k] -= atoi(input->data[k+2]);
             need[tidClient][k]  += atoi(input->data[k+2]);
         }
-        free(work);
-        free(finish);
         return 0;
     }
-    free(work);
-    free(finish);
     return 1;
 }
 
