@@ -15,7 +15,7 @@ int num_clients = 0;
 int num_request_per_client = -1;
 int num_resources = -1;
 int *provisioned_resources = NULL;
-struct array_t *parseInput(char *input);
+struct array_t_string *parseInput(char *input);
 // Variable d'initialisation des threads clients.
 unsigned int count = 0;
 
@@ -93,7 +93,7 @@ void lockIncrUnlock(pthread_mutex_t mymutex, int count){
 int 
 send_request (int client_id, int request_id, int socket_fd,char* message) {
    if (message == NULL){
-        printf("Erreur, message vide");    
+        printf("Erreur, message vide \n");    
         return 0;
     }
 
@@ -154,7 +154,7 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
 }
 
 
-struct array_t *parseInput(char *input){
+struct array_t_string *parseInput(char *input){
   char *token =strtok(input,"\n");
   struct array_t *array = new_array(5);
   token = strtok(token," ");

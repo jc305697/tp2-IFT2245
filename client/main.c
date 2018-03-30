@@ -16,12 +16,22 @@ int main (int argc, char *argv[])
   num_clients = atoi (argv[2]);
   num_request_per_client = atoi (argv[3]);
     num_resources = argc - 4;
-    printf("nombre de ressources = %d\n",num_resources );
+   
+  if (!checkValue(num_resources)||!checkValue(num_clients)){
+     printf("Nombre de ressources ou nombre de clients invalide");
+     return -1;
+  };
 
   provisioned_resources = malloc (num_resources * sizeof (int));
-  for (unsigned int i = 0; i < num_resources; i++)
-    provisioned_resources[i] = atoi (argv[i + 4]);
-  
+  for (unsigned int i = 0; i < num_resources; i++){
+    int tempVal = atoi(argv[i+4]);
+    //Si argv = null ou vide, atoi retourne 0
+    if (!checkValue(tempVal)){
+        printf("Un valeur entrée pour les ressources et invalide");
+        return -1;
+    }
+    provisioned_resources[i] = tempVal;
+  }
   int socket_test = client_connect_server();
   ct_start();
   int res = send_config(socket_test);
@@ -56,17 +66,25 @@ int main (int argc, char *argv[])
 
   return EXIT_SUCCESS;
 }
-//TODO: Pas mettre chiffres fixes
+
+int checkValue(int val){
+    if (val <= 0){
+        printf("%d doit être >= 0",val);
+        return 0;
+    }
+    return 1;
+}
+//TODO: c'est client qui doit vérifier le format
 bool send_config(int socket_fd){
     int retour;
-    char temp[10];
+    char temp[15];
     char beg[50] = "BEG ";
-    sprintf(temp,"%d",num_resources); 
+
+    sprintf(temp,"%d %d",num_resources, num_clients); 
     strcat(beg,temp);
     strcat(beg, " \n");
     char *toSend = beg;
 
-    //printf("VOICI CE QUE JE VEUX SEND %s \n",toSend);
     retour = send_request(0,0,socket_fd,toSend);
     close(socket_fd);
     if (retour == 0 ){
@@ -75,7 +93,6 @@ bool send_config(int socket_fd){
     //Send le pro
     socket_fd = client_connect_server();
     sprintf(toSend,"%s","PRO ");
-    //printf("JE SUIS RENDU AU PRO \n");
     char append[50];
     for (int i=0;i<num_resources;i++){
         sprintf(append,"%d",provisioned_resources[i]); // put the int into a string
