@@ -225,27 +225,31 @@ void make_request(client_thread* ct ){
 
         //Derniere requete
         if (request_id == (num_request_per_client-1)){
-            printf("Je suis dans le dernière requête \n");
+            printf("+-+-+Je suis dans la dernière requête +-+-+ \n");
             for (int i = 0; i < count; ++i){
   			    sprintf(append," %d",ct->initressources[i]); 
         	    strcat(message, append);
   		    }
         }else{
-            printf("je ne suis pas dedans \n");
             int val;
   		    for (int i = 0; i < count; ++i){
+                printf("POUR LE CLIENT %d \n", ct->id);
+                printf("PRO TOTALE %d | MAX CLIENT %d | ALLOCATED CLIENT %d \n",provisioned_resources[i],ct->initmax[i],ct->initressources[i]);
                 if(ct->initressources[i]>=1){
                     int negorpos = make_random_req(provisioned_resources[i]);
+                    printf("RANDOMIZE NEG OR POS %d \n", negorpos);
                     if (negorpos<0){
                         val = make_random(ct->initressources[i]);
                         val = -1* val;
+                        printf("RANDOMIZE NEGATIVE %d \n",val);
                     }else{
                         val = make_random(ct->initmax[i]-ct->initressources[i]);
+                        printf("RANDOMIZE POSITIVE %d \n", val);
                     }
                 }else{
                    
                     val = make_random(ct->initmax[i]-ct->initressources[i]);
-                   
+                    printf("FIRST RANDOM VALUE OBTAINED %d \n", val);
                 }
                 temp[i] = val;
   			    sprintf(append," %d",val); 
@@ -257,9 +261,10 @@ void make_request(client_thread* ct ){
 	    	    	printf("Client %d - ACK NOT RECEIVED \n", client_socket_fd);
    		 }
     	else{
+                //TODO: Pas vraiment un ack, il lit pas le socket
 	    		printf("Client %d - ACK RECEIVED \n", client_socket_fd);
                 for (int i = 0; i < num_resources; i++){
-                    ct->initressources[i] -= temp[i];
+                    ct->initressources[i] += temp[i];
                 }
     	}
     	close(client_socket_fd);	
