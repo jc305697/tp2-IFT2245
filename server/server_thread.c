@@ -21,21 +21,21 @@ enum {
 
 void st_banker(int tidClient, struct array_t_string *input, FILE* socket_w);
 void cleanBanker(struct array_t_string *input, FILE* socket_w);
-pthread_mutex_t lockNbClient;
-pthread_mutex_t lockResLibres;
-pthread_mutex_t lockMax;
-pthread_mutex_t lockAllouer;
-pthread_mutex_t lockCountAccep;//nombre de requete accepter
-pthread_mutex_t lockCouWait;//nombre de requete accepter avec mise en attente
-pthread_mutex_t lockCouInvalid;//nombre de requete erronees
-pthread_mutex_t lockCouDispa;//nombre de clients qui se sont terminés correctement
-pthread_mutex_t lockReqPro;//nombre total de requête traites
-pthread_mutex_t lockClientEnd;//nombre de clients ayant envoye le message CLO
-pthread_mutex_t lockClientWait;//Clients a qui j'ai dit de wait 
-pthread_mutex_t lockBesoin; 
-pthread_mutex_t locknbChaqRess;
-pthread_mutex_t lockBanker;
-pthread_mutex_t lockStrTock;
+pthread_mutex_t lockNbClient = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lockResLibres = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lockMax = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lockAllouer = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lockCountAccep = PTHREAD_MUTEX_INITIALIZER;//nombre de requete accepter
+pthread_mutex_t lockCouWait = PTHREAD_MUTEX_INITIALIZER;//nombre de requete accepter avec mise en attente
+pthread_mutex_t lockCouInvalid = PTHREAD_MUTEX_INITIALIZER;//nombre de requete erronees
+pthread_mutex_t lockCouDispa = PTHREAD_MUTEX_INITIALIZER;//nombre de clients qui se sont terminés correctement
+pthread_mutex_t lockReqPro= PTHREAD_MUTEX_INITIALIZER;//nombre total de requête traites
+pthread_mutex_t lockClientEnd = PTHREAD_MUTEX_INITIALIZER;//nombre de clients ayant envoye le message CLO
+pthread_mutex_t lockClientWait = PTHREAD_MUTEX_INITIALIZER;//Clients a qui j'ai dit de wait 
+pthread_mutex_t lockBesoin = PTHREAD_MUTEX_INITIALIZER; 
+pthread_mutex_t locknbChaqRess = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lockBanker = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lockStrTock = PTHREAD_MUTEX_INITIALIZER;
 
 
 int server_socket_fd;
@@ -74,8 +74,7 @@ int *available;
 int **allocated;
 int **max;
 int **need;
-struct array_t clientWaiting; //TODO: Instancier dans le beg
-
+bool *clientWaiting;
 void lockIncrementUnlock(pthread_mutex_t mut, int count){
   pthread_mutex_lock(&mut);
   count += 1;
@@ -98,7 +97,9 @@ void sendWait(int temps,FILE *socket_w,int tid_client){
   printf("Serveur va envoyer WAIT %d \n",temps);
   fprintf (socket_w, "WAIT %d \n",temps);
   fflush(socket_w);
-
+  pthread_mutex_lock(&lockClientWait);
+  clientWaiting[tid_client] = true;
+  pthread_mutex_unlock(&lockClientWait);
   //lockIncrementUnlock(lockClientWait,count_invalid);
   lockIncrementUnlock(lockReqPro,request_processed);
   //pthread_mutex_lock(&lockClientWait);
@@ -112,9 +113,22 @@ void sendAck(FILE *socket_w, int clientTid){
   printf("Serveur va envoyer ACK \n");
   fprintf (socket_w, "ACK \n");
   fflush(socket_w);
+  pthread_mutex_lock(&lockClientWait);
+  if (clientWaiting[clientTid])
+  {
+  	clientWaiting[clientTid]=false;
+  	pthread_mutex_unlock(&lockClientWait);
+  	lockIncrementUnlock(lockCouWait,count_wait);
+  }
+
+  else{
+  	pthread_mutex_unlock(&lockClientWait);
+  	lockIncrementUnlock(lockCountAccep,count_accepted);
+  }
+
+  lockIncrementUnlock(lockReqPro,request_processed);  
   
-  lockIncrementUnlock(lockCountAccep,count_accepted);
-  //TODO: Redo this
+  //TODO: Redo this -> fait a la ligne 118 ?
 /*
   pthread_mutex_lock(&lockClientWait);
 
@@ -133,7 +147,29 @@ struct array_t_string *parseInput(char *input){
   //char* copy; 
   //strncpy(copy, input, sizeof(input));
   //copy[sizeof(input) - 1] = '\0';
-  pthread_mutex_lock(&lockStrTock);
+ 
+  char *reste;
+  char *token = strtok_r(input,"\n",&reste);
+  struct array_t_string *array = new_arrayString(5);
+  char *reste1; 
+  token = strtok_r(token," ",&reste1);
+  if(push_backString(array,token)==-1){
+  		perror("parseInput");
+  	}
+  int i =0;
+  //inspirer par https://stackoverflow.com/questions/2227198/segmentation-fault-when-using-strtok-r?newreg=89b070f8caf842f69e47b0b4774f7748
+  while(token != NULL){
+  	token = reste1;
+  	token = strtok_r(token," ",&reste1);
+  	 i +=1;
+  	 if(token != NULL && push_backString(array,token)==-1){
+  		perror("parseInput");
+  	}
+  }
+  return array;
+
+
+ /* pthread_mutex_lock(&lockStrTock);
   char *token = strtok(input,"\n");
   pthread_mutex_unlock(&lockStrTock);
 
@@ -153,7 +189,7 @@ struct array_t_string *parseInput(char *input){
   }
 
   pthread_mutex_unlock(&lockStrTock);
-  return array;
+  return array;*/
 }
 
 void closeStream(FILE *sockr, FILE *sockw){
@@ -283,6 +319,10 @@ void openAndGetline(int command, socklen_t socket_len){
               nbRessources = atoi(input->data[1]);
               nbClients = atoi(input->data[2]);  
               available = malloc (nbRessources * sizeof(int));
+              clientWaiting = calloc(nbClients,sizeof(bool));
+              for (int i = 0; i < nbClients; ++i){
+              	clientWaiting[i] = false;
+              }
           }
 
       //PRO
@@ -332,33 +372,6 @@ void st_init (){
 
   // Initialise le nombre de clients connecté.
   nbClients = 0;
-
-  if (pthread_mutex_init(&lockStrTock,NULL))
-    perror("erreur mutex nombre de client");//send au client ?
-  if (pthread_mutex_init(&lockNbClient,NULL))
-    perror("erreur mutex nombre de client");
-  if (pthread_mutex_init(&lockResLibres,NULL))
-    perror("erreur mutex nombre de ressources libres");
-  if (pthread_mutex_init(&lockMax,NULL))
-    perror("erreur mutex nombre de ressource maximum");
-  if (pthread_mutex_init(&lockAllouer,NULL))
-    perror("erreur mutex nombre de ressource allouer");
-  if (pthread_mutex_init(&lockCountAccep,NULL))
-    perror("erreur mutex nombre de requete accepter ");
-  if (pthread_mutex_init(&lockCouWait,NULL))
-    perror("erreur mutex nombre de requete accepter avec mise en attente ");
-  if (pthread_mutex_init(&lockCouInvalid,NULL))
-    perror("erreur mutex nombre de requete erronees");
-  if (pthread_mutex_init(&lockCouDispa,NULL))
-    perror("erreur mutex nombre de clients qui se sont terminés correctement");
-  if (pthread_mutex_init(&lockReqPro,NULL))
-    perror("erreur mutex nombre total de requête traites");
-  if (pthread_mutex_init(&lockClientEnd,NULL))
-    perror("erreur mutex nombre de clients ayant envoye le message CLO.");
-  if (pthread_mutex_init(&lockBesoin,NULL))
-    perror("erreur mutex tableau pour les besoins des clients.");
-  if (pthread_mutex_init(&locknbChaqRess,NULL))
-    perror("erreur mutex pour tableau nombre total de ressource de chaque type.");
 
   socklen_t socket_len = sizeof (thread_addr);
 
