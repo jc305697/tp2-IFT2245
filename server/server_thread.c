@@ -127,19 +127,7 @@ void sendAck(FILE *socket_w, int clientTid){
   }
 
   lockIncrementUnlock(lockReqPro,request_processed);  
-  
-  //TODO: Redo this -> fait a la ligne 118 ?
-/*
-  pthread_mutex_lock(&lockClientWait);
 
-  if ( clientTid != -1 &&estDansListe(&clientQuiWait,clientTid)){
-    lockIncrementUnlock(lockCouWait,count_wait);  
-    deleteClientInArray(&clientQuiWait,clientTid);
-  }
-  pthread_mutex_unlock(&lockClientWait);
-
-  lockIncrementUnlock(lockReqPro,request_processed);    
-*/
   return;
 }
 
@@ -295,7 +283,7 @@ void openAndGetline(int command, socklen_t socket_len){
     char *args; 
     size_t args_len=0;
 
-    printf("About to getline \n");
+    //printf("About to getline \n");
     if(getline(&args,&args_len,socket_r) == -1){
       sendErreur("Pas reçu de commande",socket_w);
       if (args) {free(args);}
@@ -393,8 +381,6 @@ int st_wait() {
   while(thread_socket_fd < 0 && accepting_connections) {//tant que je n'ai pas de requetes et que j'accepte les connexions
 
     thread_socket_fd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
-  //http://pubs.opengroup.org/onlinepubs/009695399/functions/accept.html
-  //Upon successful completion, accept() shall return the non-negative file descriptor of the accepted socket. Otherwise, -1 shall be returned and errno set to indicate the error.
 
     if (time(NULL) >= end_time) {//si j'ai depasse ou egal le temps que de fin d'attente
       break;
@@ -486,7 +472,7 @@ void st_process_requests (server_thread * st, int socket_fd){
   while (true){
     
     char *args = NULL; size_t args_len = 0;
-    printf("About to getline Client dans process et socket_fd= %d \n", socket_fd);
+    //printf("About to getline Client dans process et socket_fd= %d \n", socket_fd);
     if(getline(&args,&args_len,socket_r) == -1){
       sendErreur("Pas reçu de commande",socket_w);
       if (args) {free(args);}
@@ -495,12 +481,11 @@ void st_process_requests (server_thread * st, int socket_fd){
 	printf("Serveur a recu : %s  sur  %d",args,socket_fd);
     struct array_t_string *input= parseInput(args);
     printf(" du client %d \n",atoi(input->data[1]));
-
+        int tidClient = atoi(input->data[1]);
     if(strcmp(input->data[0],"END") == 0){
       printf("Serveur a reçu un END \n");
       commEND(socket_r,socket_w);
       if (input) {delete_array_string(input);}
-      if (args) {free(args);}
       break;
     }
     else if(array_get_size(input)  < 2 ){
@@ -513,11 +498,11 @@ void st_process_requests (server_thread * st, int socket_fd){
 
     }else if( strcmp(input->data[0],"INI") == 0){
 
-        int tidClient = atoi(input->data[1]);
+
         pthread_mutex_lock(&lockMax);
        for (int i=0; i<nbRessources;i++){
            if (atoi(input->data[i+2]) > provided[i]){
-                printf("Demande trop grande \n");
+                printf("****************Demande trop grande************** \n");
                 fclose (socket_r);
                 fclose (socket_w);
                 return;
@@ -532,29 +517,26 @@ void st_process_requests (server_thread * st, int socket_fd){
        break;
 
     }else if (strcmp(input->data[0],"REQ") == 0){
-      //printf("Serveur rentre dans le REQ \n");
-      int tidClient = atoi(input->data[1]);  
+      //printf("Serveur rentre dans le REQ \n"); 
       st_banker(tidClient,input, socket_w);
 
       if (args) {free(args);}
       if (input) {delete_array_string(input);}
       break;
-    }
-
-    else if(strcmp(input->data[0],"CLO") == 0){
-
-      int tidClient = atoi(input->data[1]);
-      for(int i=0;i<nbRessources;i++){
-            if (allocated[tidClient][i]!=0){
-                printf("Erreur, avant de close doit avoir libéré tout");
-                fclose (socket_r);
-                fclose (socket_w);
-                return;
-            }  
-      }
-    lockIncrementUnlock(lockClientEnd,clients_ended);
-    lockIncrementUnlock(lockCouDispa,count_dispatched);
-    sendAck(socket_w,tidClient);
+    
+    }else if(strcmp(input->data[0],"CLO") == 0){
+        //printf("Serveur dans le CLO \n");
+          for(int i=0;i<nbRessources;i++){
+                if (allocated[tidClient][i]!=0){
+                    printf("Erreur, avant de close doit avoir libéré tout");
+                    fclose (socket_r);
+                    fclose (socket_w);
+                    return;
+                }  
+          }
+        lockIncrementUnlock(lockClientEnd,clients_ended);
+        lockIncrementUnlock(lockCouDispa,count_dispatched);
+        sendAck(socket_w,tidClient);
     }else{
       sendErreur("ERR commande inconnu",socket_w); 
       if (input) {delete_array_string(input);}
@@ -573,11 +555,12 @@ fclose (socket_w);
 void *st_code (void *param){
   server_thread *st = (server_thread *) param;
 
-  int thread_socket_fd = -1;
+  int thread_socket_fd;
 
   // Boucle de traitement des requêtes.
   while (accepting_connections)
   {
+    thread_socket_fd = -1;
     // Wait for a I/O socket.
     thread_socket_fd = st_wait();
     //printf("Serveur a accepté le client FD %d \n", thread_socket_fd);
