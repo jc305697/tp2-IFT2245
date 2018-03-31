@@ -48,7 +48,7 @@ int nbRessources;
 
 void  processBEG( socklen_t socket_len );
 void processPRO( socklen_t socket_len);
-
+int stateSafe(struct array_t_string *input,int tidClient);
 //struct array_t clientQuiWait; //Clients a qui j'ai dit de wait 
 //struct array_t max;
 //struct array_t allouer;
@@ -219,7 +219,7 @@ void st_banker(int tidClient, struct array_t_string *input, FILE* socket_w){
     pthread_mutex_lock(&lockBanker);
       //Valid format
       for (int i=0; i<nbRessources;i++){
-
+      		printf("atoi = %d  de %s \n  ", atoi(input->data[i+2]),input->data[i+2]);
             if (atoi(input->data[i+2]) > 0){
                 printf("BANQUIER : DEMANDE %d | DEJA ALLOUE : %d | MAX CLIENT : %d \n",atoi(input->data[i+2]), allocated[tidClient][i], max[tidClient][i]);
                 //Ask + allocated doit être <= max
@@ -264,7 +264,7 @@ void st_banker(int tidClient, struct array_t_string *input, FILE* socket_w){
     }
 
 
-    int safe = stateSafe(tidClient);
+    int safe = stateSafe(input,tidClient);
     if (!safe){
         count_wait++;
         sendWait(max_wait_time,socket_w,tidClient);
@@ -336,7 +336,7 @@ void openAndGetline(int command, socklen_t socket_len){
           if (strcmp(input->data[0],"PRO") == 0){
                 tag = 1;
                 for (int i=0;i<nbRessources;i++){
-                    available[i] = input->data[i];
+                    available[i] = atoi(input->data[i]);
                 }
       
                 allocated = malloc (nbClients * sizeof (int*));
@@ -491,7 +491,7 @@ void st_process_requests (server_thread * st, int socket_fd){
       if (args) {free(args);}
       break;
     }
-	printf("Serveur a recu : %s",args,socket_fd);
+	printf("Serveur a recu : %s  sur  %d",args,socket_fd);
     struct array_t_string *input= parseInput(args);
     printf("Du client %d \n",atoi(input->data[1]));
 

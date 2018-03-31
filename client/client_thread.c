@@ -156,11 +156,11 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
 
 struct array_t_string *parseInput(char *input){
   char *token =strtok(input,"\n");
-  struct array_t *array = new_array(5);
+  struct array_t_string *array = new_arrayString(5);
   token = strtok(token," ");
   int i =0;
   while(token != NULL){
-  	if(push_back(array,token)==-1){
+  	if(push_backString(array,token)==-1){
   		perror("PARSE ERROR");
   	}
   	token = strtok(NULL," ");
@@ -226,13 +226,13 @@ void make_request(client_thread* ct ){
         //Derniere requete
         if (request_id == (num_request_per_client-1)){
             printf("+-+-+Je suis dans la dernière requête +-+-+ \n");
-            for (int i = 0; i < count; ++i){
+            for (int i = 0; i < num_resources; ++i){
   			    sprintf(append," %d",ct->initressources[i]); 
         	    strcat(message, append);
   		    }
         }else{
             int val;
-  		    for (int i = 0; i < count; ++i){
+  		    for (int i = 0; i < num_resources; ++i){
                 printf("POUR LE CLIENT %d \n", ct->id);
                 printf("PRO TOTALE %d | MAX CLIENT %d | ALLOCATED CLIENT %d \n",provisioned_resources[i],ct->initmax[i],ct->initressources[i]);
                 if(ct->initressources[i]>=1){

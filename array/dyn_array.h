@@ -7,7 +7,7 @@ struct array_t *new_array (size_t capacity);
 struct array_t;
 struct array_t_string;
 int estDansListe(struct array_t *liste,int clientTid);
-size_t array_get_size(struct array_t *array);
+size_t array_get_size(struct array_t_string *array);
 void **array_get_data(struct array_t *array);
 void delete_array_callback(struct array_t **array, void (*callback)(void*));
 void delete_array (struct array_t *array);

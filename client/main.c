@@ -3,7 +3,7 @@
 #include "client_thread.h"
 //#include <stdio.h>
 #define _GNU_SOURCE
-
+int checkValue(int val);
 int main (int argc, char *argv[])
 {
   if (argc < 5) {

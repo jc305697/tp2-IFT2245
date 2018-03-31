@@ -7,6 +7,11 @@ struct array_t {
   size_t size, capacity;
   int tid;
 };
+
+struct array_t_string{
+  size_t size, capacity;
+  char **data;
+};
 struct array_t *new_array (size_t capacity) {
   struct array_t *newA = malloc(sizeof(*newA));
   if (!newA) {//erreur dans l'allocation de la mémoire
@@ -20,7 +25,7 @@ struct array_t *new_array (size_t capacity) {
     return newA;
 }
 
-size_t array_get_size(struct array_t *array) {
+size_t array_get_size(struct array_t_string *array) {
   return array ? array->size : 0;
 }
 
@@ -44,24 +49,8 @@ void delete_array (struct array_t *array) {
   }
 }
 
-struct array_t deleteClientInArray(struct array_t *array, int clientTid){
-  struct array_t arrayTemp = *new_array(array->size);
-  //TODO: Adapter ceci, sait pas comment faire
-  //struct int* listeClientId = *array->tid;
-  /*for (int i = 0; i < array->size; ++i){
-    if(listeClient[i].tid!=clientTid){
-      push_back(&arrayTemp,clientTid);
-    }
-  }
-*/
-  return arrayTemp;
-}
 
 
-struct array_t_string{
-  size_t size, capacity;
-  char **data;
-};
 
 
 struct array_t_string *new_arrayString (size_t capacity) {
