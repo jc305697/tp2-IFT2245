@@ -125,7 +125,7 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
             break;
     }
 
-    printf("ABOUT TO CHECK %s \n",args);
+        close(socket_fd);
     //struct array_t* input = parseInput(copy);
     if (strcmp(args,"ACK \n") == 0){
       printf("Un ACK \n");
@@ -136,6 +136,7 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
 
     }else{
       printf("Pas un ACK \n");
+
 	  if (strstr(args,"ERR")){
          printf("je suis dans err");
     	 lockIncrUnlock(lockCount_inv,count_invalid);
@@ -148,8 +149,13 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
          //struct array_t* input = parseInput(test);
         //TODO: Trouver une manière d'aller fetch deuxieme arg san changer input
          sleep(5);
-         send_request (client_id, request_id, socket_fd, message);
-         return 0;
+         socket_fd = -2;
+         while (socket_fd == -2){
+            socket_fd = client_connect_server();
+         }
+         int resultat = send_request (client_id, request_id, socket_fd, message);
+         printf("Right after recursion \n");
+         return resultat;
 	  }else{
          printf("Invalid protocol action \n");
          return -1;
@@ -283,8 +289,9 @@ void make_request(client_thread* ct ){
                     printf("Client %d a maintenant %d \n",ct->id,ct->initressources[i]);
                 }
         request_sent+=1;
+    	//close(client_socket_fd);	
     	}
-    	close(client_socket_fd);	
+
   }
 }
 
@@ -328,7 +335,7 @@ void* ct_code (void *param){
         }
 
         printf("Closing socket %d for Client %d \n", client_socket_fd, ct->id);
-        close(client_socket_fd);
+        //close(client_socket_fd);
     }
       make_request(ct);
       printf("done requesting, need to close \n");
@@ -357,7 +364,7 @@ void* ct_code (void *param){
         }
       
         printf("Closing socket %d for Client %d \n", client_socket_fd, ct->id);
-        close(client_socket_fd);
+        //close(client_socket_fd);
         free(ct->initressources);
         free(ct->initmax);
         return NULL;
