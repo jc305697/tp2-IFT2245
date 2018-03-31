@@ -75,9 +75,9 @@ int **allocated;
 int **max;
 int **need;
 bool *clientWaiting;
-void lockIncrementUnlock(pthread_mutex_t mut, int count){
+void lockIncrementUnlock(pthread_mutex_t mut, unsigned int *count){
   pthread_mutex_lock(&mut);
-  count += 1;
+  *count += 1;
   pthread_mutex_unlock(&mut); 
 }
 
@@ -87,8 +87,8 @@ void sendErreur(const char *message, FILE *socket_w){
   fprintf (socket_w, "ERR %s \n", message);
   fflush(socket_w);
 
-  lockIncrementUnlock(lockCouInvalid,count_invalid);
-  lockIncrementUnlock(lockReqPro,request_processed);
+  lockIncrementUnlock(lockCouInvalid,&count_invalid);
+  lockIncrementUnlock(lockReqPro,&request_processed);
 
   return;
 }
@@ -101,7 +101,7 @@ void sendWait(int temps,FILE *socket_w,int tid_client){
   clientWaiting[tid_client] = true;
   pthread_mutex_unlock(&lockClientWait);
   //lockIncrementUnlock(lockClientWait,count_invalid);
-  lockIncrementUnlock(lockReqPro,request_processed);
+  lockIncrementUnlock(lockReqPro,&request_processed);
   //pthread_mutex_lock(&lockClientWait);
   //push_back(&clientWaiting,tid_client);
   //pthread_mutex_unlock(&lockClientWait);
@@ -114,19 +114,21 @@ void sendAck(FILE *socket_w, int clientTid){
   fprintf (socket_w, "ACK \n");
   fflush(socket_w);
   pthread_mutex_lock(&lockClientWait);
-  if (clientWaiting[clientTid])
+  if ( clientTid != -1 && clientWaiting[clientTid])
   {
   	clientWaiting[clientTid]=false;
   	pthread_mutex_unlock(&lockClientWait);
-  	lockIncrementUnlock(lockCouWait,count_wait);
+  	lockIncrementUnlock(lockCouWait,&count_wait);
   }
 
   else{
   	pthread_mutex_unlock(&lockClientWait);
-  	lockIncrementUnlock(lockCountAccep,count_accepted);
+  	lockIncrementUnlock(lockCountAccep,&count_accepted);
   }
 
-  lockIncrementUnlock(lockReqPro,request_processed);  
+
+
+  lockIncrementUnlock(lockReqPro,&request_processed);  
 
   return;
 }
@@ -402,6 +404,7 @@ void lockUnlockDestroy(pthread_mutex_t mut){
 bool commEND (FILE *socket_r,FILE *socket_w){
       pthread_mutex_lock(&lockNbClient);
       pthread_mutex_lock(&lockCouDispa);
+      printf("nbClients = %d et  count_dispatched = %d\n",nbClients,count_dispatched );
       if (nbClients==count_dispatched){
         pthread_mutex_lock(&locknbChaqRess);
         pthread_mutex_lock(&lockResLibres);
@@ -414,18 +417,21 @@ bool commEND (FILE *socket_r,FILE *socket_w){
             return false ;
           }
         }
-
-        sigint_handler(1);
+        sendAck(socket_w,-1);
+        
         free(available);
         free(provided);
         
         //detruit les mutex et libère la mémoire pour mettre fin au serveur
-        
+        sigint_handler(1);
+        printf("va detruire lockResLibres\n" );
         unlockAndDestroy(lockResLibres);
+        printf("va detruire locknbChaqRess\n" );
         unlockAndDestroy(locknbChaqRess);
 
-
+        
         pthread_mutex_lock(&lockStrTock);
+        printf("va detruire lockStrTock\n" );
         unlockAndDestroy(lockStrTock);
 
         //pthread_mutex_lock(&lockClientWait);
@@ -448,14 +454,21 @@ bool commEND (FILE *socket_r,FILE *socket_w){
         pthread_mutex_unlock(&lockAllouer);
         pthread_mutex_destroy(&lockAllouer);
         */
-     
+        printf("va detruire lockNbClient\n" );
         unlockAndDestroy(lockNbClient);
-        lockUnlockDestroy(lockCountAccep);        
+        printf("va detruire lockCountAccep\n" );
+        lockUnlockDestroy(lockCountAccep);
+        printf("va detruire lockCouWait\n" );        
         lockUnlockDestroy(lockCouWait);
+        printf("va detruire lockCouInvalid\n" );
         lockUnlockDestroy(lockCouInvalid);
-        lockUnlockDestroy(lockCouDispa);
+        printf("va detruire lockCouDispa\n" );
+        unlockAndDestroy(lockCouDispa);
+        printf("va detruire lockReqPro\n" );
         lockUnlockDestroy(lockReqPro);
+        printf("va detruire lockClientEnd\n" );
         lockUnlockDestroy(lockClientEnd);
+        printf("va detruire lockClientWait\n" );
         lockUnlockDestroy(lockClientWait);
        // sigint_handler(2);
         return true; 
@@ -536,8 +549,10 @@ void st_process_requests (server_thread * st, int socket_fd){
                     return;
                 }  
           }
-        lockIncrementUnlock(lockClientEnd,clients_ended);
-        lockIncrementUnlock(lockCouDispa,count_dispatched);
+        lockIncrementUnlock(lockClientEnd,&clients_ended);
+        printf("count_dispatched = %d  avant incrementation\n",count_dispatched );
+        lockIncrementUnlock(lockCouDispa,&count_dispatched);
+        printf("count_dispatched = %d  apres incrementation\n",count_dispatched );
         sendAck(socket_w,tidClient);
     }else{
       sendErreur("ERR commande inconnu",socket_w); 
