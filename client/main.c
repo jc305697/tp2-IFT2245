@@ -4,6 +4,7 @@
 //#include <stdio.h>
 #define _GNU_SOURCE
 int checkValue(int val);
+void send_end(int socket_fd);
 int main (int argc, char *argv[])
 {
   if (argc < 5) {
@@ -32,28 +33,30 @@ int main (int argc, char *argv[])
     }
     provisioned_resources[i] = tempVal;
   }
+
   int socket_test = client_connect_server();
   ct_start();
-  int res = send_config(socket_test);
-  //printf("send_config est termine \n");
-  //printf("%d \n",res);
-    if (res){
+  if (send_config(socket_test)){
+      client_thread *client_threads
+                = malloc (num_clients * sizeof (client_thread));
+        for (unsigned int i = 0; i < num_clients; i++){
+            ct_init (&(client_threads[i]));
+        }
+
+        for (unsigned int i = 0; i < num_clients; i++){ 
+            ct_create_and_start (&(client_threads[i]));
+        }
+      //TODO: On arrive jamais à revenir ici
+      //ct_wait_server ();
+      printf("Finished sending all REQ \n");
+      socket_test = client_connect_server();
+      printf("Right before sending END \n");
+      send_end(socket_test);
+  }else{
+    printf("Erreur au niveau de BEG/PRO");
+  }
 
 
-  client_thread *client_threads
-            = malloc (num_clients * sizeof (client_thread));
-    for (unsigned int i = 0; i < num_clients; i++){
-        ct_init (&(client_threads[i]));
-}
-
-    for (unsigned int i = 0; i < num_clients; i++){ 
-        ct_create_and_start (&(client_threads[i]));
-}
-//printf("before waiting \n");
-  ct_wait_server ();
-    }else{
-        printf("Erreur au niveau de BEG/PRO");
-    }
   // Affiche le journal.
   st_print_results (stdout, true);
   FILE *fp = fopen("client.log", "w");
@@ -74,7 +77,15 @@ int checkValue(int val){
     }
     return 1;
 }
-//TODO: c'est client qui doit vérifier le format
+
+void send_end(int socket_fd){
+    printf("About to send end \n");
+    while(send_request(0,1,socket_fd,"END") != 1){
+        printf("Attempting to send END \n");
+    }
+    printf("Server should end..\n");
+}
+
 bool send_config(int socket_fd){
     int retour;
     char temp[15];
@@ -87,7 +98,7 @@ bool send_config(int socket_fd){
 
     retour = send_request(0,0,socket_fd,toSend);
     close(socket_fd);
-    if (retour == 0 ){
+    if (retour != 1 ){
       return false;
     }
     //Send le pro
@@ -104,7 +115,7 @@ bool send_config(int socket_fd){
 
     printf("close le socket \n");
     close(socket_fd);
-    if (retour == 0)
+    if (retour != 1)
     {
       return  false;
     }

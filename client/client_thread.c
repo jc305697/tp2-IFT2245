@@ -94,7 +94,7 @@ int
 send_request (int client_id, int request_id, int socket_fd,char* message) {
    if (message == NULL){
         printf("Erreur, message vide \n");    
-        return 0;
+        return -1;
     }
 
     printf("Client %d attempting to send %s \n",client_id,message);
@@ -114,41 +114,46 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
     ssize_t cnt = getline(&args, &args_len, socket_r);//peut mettre dans un while tant que cnt = -1
     printf("Client %d received %s \n", client_id, args);
    
-    printf("Client %d close le stream %d \n", client_id, socket_fd);
+    //printf("Client %d close le stream %d \n", client_id, socket_fd);
     fclose(socket_w);
     fclose(socket_r);
     switch (cnt) {
         case -1:
             perror("Erreur réception client \n");
-            return 0;
+            return -1;
         default:
             break;
     }
 
+    printf("ABOUT TO CHECK %s \n",args);
     //struct array_t* input = parseInput(copy);
-    if (strcmp(args,"ACK")){
+    if (strcmp(args,"ACK \n") == 0){
+      printf("Un ACK \n");
       //printf("je suis dans le lock");
 	  lockIncrUnlock(lockCount_acc,count_accepted);
       //printf("je viens de quitter le lock");
       return 1;
 
     }else{
+      printf("Pas un ACK \n");
 	  if (strstr(args,"ERR")){
          printf("je suis dans err");
     	 lockIncrUnlock(lockCount_inv,count_invalid);
          //printf("Commande invalide %s \n", input->data[1]);
          printf("Commande invalide %s \n", args);
-
+         return -1;
 	  }else if(strstr(args,"WAIT")){
+         printf("Client sait qu'il doit WAIT \n");
          lockIncrUnlock(lockCount_wait,count_on_wait);
          //struct array_t* input = parseInput(test);
         //TODO: Trouver une manière d'aller fetch deuxieme arg san changer input
          sleep(5);
-         send_request (client_id, request_id, socket_fd, args);
+         send_request (client_id, request_id, socket_fd, message);
+         return 0;
 	  }else{
-         printf("Invalid protocol action");
+         printf("Invalid protocol action \n");
+         return -1;
       }
-      return 0;
     }
 }
 
@@ -229,9 +234,9 @@ void make_request(client_thread* ct ){
         if (request_id == (num_request_per_client-1)){
             printf("+-+-+Je suis dans la dernière requête +-+-+ \n");
             for (int i = 0; i < num_resources; ++i){
-                int temp = ct->initressources[i];
-                temp = temp*-1;
-  			    sprintf(append," %d",temp); 
+                int number = ct->initressources[i];
+                number = number*-1;
+  			    sprintf(append," %d",number); 
         	    strcat(message, append);
   		    }
         }else{
@@ -261,18 +266,23 @@ void make_request(client_thread* ct ){
   		    }
         }
         strcat(message, " \n");
-        request_sent+=1;
     	if (send_request (ct->id, request_id, client_socket_fd,message) != 1){
-	    	    	printf("Client %d - ACK NOT RECEIVED \n", ct->id);
+	    	    	printf("Client %d - WAIT OR ERROR \n", ct->id);
                     count_invalid+=1;
+                for (int i = 0; i < num_resources; i++){
+                    printf("Client %d a %d \n",ct->id,ct->initressources[i]);
+                }
    		 }
     	else{
                 //TODO: Pas vraiment un ack, il lit pas le socket
 	    		printf("Client %d - ACK RECEIVED \n", ct->id);
                 count_accepted+=1;
                 for (int i = 0; i < num_resources; i++){
+                    printf("Client %d avait avant %d \n",ct->id,ct->initressources[i]);
                     ct->initressources[i] += temp[i];
+                    printf("Client %d a maintenant %d \n",ct->id,ct->initressources[i]);
                 }
+        request_sent+=1;
     	}
     	close(client_socket_fd);	
   }
@@ -309,7 +319,7 @@ void* ct_code (void *param){
 
         //Envoie la requête INI
         if (send_request(ct->id,-1,client_socket_fd,message) != 1){
-        	printf("Client INI %d on FD %d - ACK NOT RECEIVED \n", ct->id, client_socket_fd);
+        	printf("Client INI %d on FD %d - WAIT OR ERROR \n", ct->id, client_socket_fd);
         }
 
         else{
@@ -320,37 +330,37 @@ void* ct_code (void *param){
         printf("Closing socket %d for Client %d \n", client_socket_fd, ct->id);
         close(client_socket_fd);
     }
-  make_request(ct);
-  printf("done requesting, need to close \n");
-  ct_wait_server();
-  printf("after waiting a bit \n");
-  client_socket_fd = -2;
-  while (client_socket_fd == -2){
-        client_socket_fd = client_connect_server();
-  }
-  char message1[50]  = "CLO";
-  char append1[5]; 
-  sprintf(append1," %d",ct->id);
-  strcat(message1,append1);
-  strcat(message1, " \n");
-  
-    if(send_request (ct->id, num_request_per_client, client_socket_fd,message1) != 0){
-       printf("Client CLO %d on FD %d - ACK NOT RECEIVED \n", ct->id, client_socket_fd);
-       
-     }
+      make_request(ct);
+      printf("done requesting, need to close \n");
+      //ct_wait_server();
+      printf("after waiting a bit \n");
+      client_socket_fd = -2;
+      while (client_socket_fd == -2){
+            client_socket_fd = client_connect_server();
+      }
+      char message1[50]  = "CLO";
+      char append1[5]; 
+      sprintf(append1," %d",ct->id);
+      strcat(message1,append1);
+      strcat(message1, " \n");
+      
+        if(send_request (ct->id, num_request_per_client, client_socket_fd,message1) != 1){
+           printf("Client CLO %d on FD %d - WAIT OR ERROR \n", ct->id, client_socket_fd);
+           
+         }
 
-    else{
-        printf("Client CLO %d on FD %d - ACK RECEIVED \n", ct->id, client_socket_fd);
-     	pthread_mutex_lock(&lockCount_disp);
-        count_dispatched++;
-       	pthread_mutex_unlock(&lockCount_disp);
-    }
-  
-    printf("Closing socket %d for Client %d \n", client_socket_fd, ct->id);
-    close(client_socket_fd);
-    free(ct->initressources);
-    free(ct->initmax);
-    return NULL;
+        else{
+            printf("Client CLO %d on FD %d - ACK RECEIVED \n", ct->id, client_socket_fd);
+         	pthread_mutex_lock(&lockCount_disp);
+            count_dispatched++;
+           	pthread_mutex_unlock(&lockCount_disp);
+        }
+      
+        printf("Closing socket %d for Client %d \n", client_socket_fd, ct->id);
+        close(client_socket_fd);
+        free(ct->initressources);
+        free(ct->initmax);
+        return NULL;
 }
 
 //
