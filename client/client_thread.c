@@ -113,19 +113,18 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
      
     ssize_t cnt = getline(&args, &args_len, socket_r);//peut mettre dans un while tant que cnt = -1
     printf("Client %d received %s \n", client_id, args);
-    switch (cnt) {
-        case -1:
-            perror("Erreur réception client \n");
-            return 0;
-            break;
-        default:
-
-            break;
-    }
    
     printf("Client %d close le stream %d \n", client_id, socket_fd);
     fclose(socket_w);
     fclose(socket_r);
+    switch (cnt) {
+        case -1:
+            perror("Erreur réception client \n");
+            return 0;
+        default:
+            break;
+    }
+
     //struct array_t* input = parseInput(copy);
     if (strcmp(args,"ACK")){
       //printf("je suis dans le lock");
@@ -178,13 +177,13 @@ int client_connect_server(){
     //Crée un socket via addresse IPV4 et TCP ou UDP
     if ((client_socket_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
         perror("ERROR opening socket");
-        return 1;
+        return -2;
     }
 
     struct hostent *hostInternet;
     if ((hostInternet = gethostbyname("localhost")) == NULL){
         perror("ERROR finding IP");
-        return client_socket_fd;
+        return -2;
     };
     //Addresse serveur
     struct sockaddr_in server_address;
@@ -201,7 +200,7 @@ int client_connect_server(){
 
     if (connect(client_socket_fd,(struct sockaddr *) &server_address, sizeof(server_address)) < 0 ){
         perror("ERROR connexion");
-        return client_socket_fd;
+        return -2;
     };
     printf("** Client sur le  FD %d est connecté à un serveur ** \n", client_socket_fd);
 
@@ -211,12 +210,15 @@ int client_connect_server(){
 
 void make_request(client_thread* ct ){
   int temp[num_resources];
-  int client_socket_fd = -1;
+  int client_socket_fd;
   for (unsigned int request_id = 0; request_id < num_request_per_client;
       request_id++){
 
         printf("Client %d attempting to connect to do REQ %d \n", ct->id, request_id);
-  		client_socket_fd = client_connect_server() ;
+        client_socket_fd = -2;
+        while (client_socket_fd == -2){
+            client_socket_fd = client_connect_server();
+        }
         printf("Client %d connected on FD %d \n", ct->id, client_socket_fd);
   		char message[50]  = "REQ";
   		char append[5]; 
@@ -259,12 +261,15 @@ void make_request(client_thread* ct ){
   		    }
         }
         strcat(message, " \n");
+        request_sent+=1;
     	if (send_request (ct->id, request_id, client_socket_fd,message) != 1){
-	    	    	printf("Client %d - ACK NOT RECEIVED \n", ct->tid);
+	    	    	printf("Client %d - ACK NOT RECEIVED \n", ct->id);
+                    count_invalid+=1;
    		 }
     	else{
                 //TODO: Pas vraiment un ack, il lit pas le socket
-	    		printf("Client %d - ACK RECEIVED \n", ct->tid);
+	    		printf("Client %d - ACK RECEIVED \n", ct->id);
+                count_accepted+=1;
                 for (int i = 0; i < num_resources; i++){
                     ct->initressources[i] += temp[i];
                 }
@@ -276,10 +281,13 @@ void make_request(client_thread* ct ){
 void* ct_code (void *param){
     int tagINI = 0;
     client_thread *ct;
-    int client_socket_fd;
-    char message[50]="INI";
+    int client_socket_fd = -2;
+
     while(!tagINI){
-        client_socket_fd = client_connect_server();
+        char message[25]="INI";
+        while (client_socket_fd == -2){
+            client_socket_fd = client_connect_server();
+        }
         ct = (client_thread *) param;
         //Initialise le client
  
@@ -301,11 +309,11 @@ void* ct_code (void *param){
 
         //Envoie la requête INI
         if (send_request(ct->id,-1,client_socket_fd,message) != 1){
-        	printf("Client INI on %d FD %d - ACK NOT RECEIVED \n", ct->id, client_socket_fd);
+        	printf("Client INI %d on FD %d - ACK NOT RECEIVED \n", ct->id, client_socket_fd);
         }
 
         else{
-        	printf("Client INI on %d FD %d - ACK RECEIVED \n", ct->id, client_socket_fd);
+        	printf("Client INI %d on FD %d - ACK RECEIVED \n", ct->id, client_socket_fd);
             tagINI = 1;
         }
 
@@ -313,16 +321,22 @@ void* ct_code (void *param){
         close(client_socket_fd);
     }
   make_request(ct);
-
-  client_socket_fd = client_connect_server();
+  printf("done requesting, need to close \n");
+  ct_wait_server();
+  printf("after waiting a bit \n");
+  client_socket_fd = -2;
+  while (client_socket_fd == -2){
+        client_socket_fd = client_connect_server();
+  }
   char message1[50]  = "CLO";
   char append1[5]; 
   sprintf(append1," %d",ct->id);
   strcat(message1,append1);
   strcat(message1, " \n");
   
-    if(send_request (ct->id, num_request_per_client, client_socket_fd,message) != 0){
+    if(send_request (ct->id, num_request_per_client, client_socket_fd,message1) != 0){
        printf("Client CLO %d on FD %d - ACK NOT RECEIVED \n", ct->id, client_socket_fd);
+       
      }
 
     else{
@@ -347,12 +361,7 @@ void* ct_code (void *param){
 //
 void ct_wait_server (){
 
-  // TP2 TODO: IMPORTANT code non valide.
-
-  //sleep (4);
-  while(count_dispatched != num_clients);
-
-  // TP2 TODO:END
+sleep(4);
 
 }
 
@@ -386,9 +395,9 @@ void st_print_results (FILE * fd, bool verbose){
   {
     fprintf (fd, "\n---- Résultat du client ----\n");
     fprintf (fd, "Requêtes acceptées: %d\n", count_accepted);
-    fprintf (fd, "Requêtes : %d\n", count_on_wait);
+    fprintf (fd, "Requêtes en attente: %d\n", count_on_wait);
     fprintf (fd, "Requêtes invalides: %d\n", count_invalid);
-    fprintf (fd, "Clients : %d\n", count_dispatched);
+    fprintf (fd, "Clients dispatched : %d\n", count_dispatched);
     fprintf (fd, "Requêtes envoyées: %d\n", request_sent);
   }
   else
