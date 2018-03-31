@@ -5,8 +5,7 @@
 #define _GNU_SOURCE
 int checkValue(int val);
 void send_end(int socket_fd);
-int main (int argc, char *argv[])
-{
+int main (int argc, char *argv[]){
   if (argc < 5) {
     fprintf (stderr, "Usage: %s <port-nb> <nb-clients> <nb-requests> <resources>...\n",
         argv[0]);
@@ -47,9 +46,11 @@ int main (int argc, char *argv[])
             ct_create_and_start (&(client_threads[i]));
         }
       //TODO: On arrive jamais à revenir ici
-      //ct_wait_server ();
+      ct_wait_server ();
       printf("Finished sending all REQ \n");
+      
       socket_test = client_connect_server();
+      
       printf("Right before sending END \n");
       send_end(socket_test);
   }else{
@@ -80,7 +81,7 @@ int checkValue(int val){
 
 void send_end(int socket_fd){
     printf("About to send end \n");
-    while(send_request(0,1,socket_fd,"END") != 1){
+    while(send_request(0,2,socket_fd,"END \n") != 1){
         printf("Attempting to send END \n");
     }
     printf("Server should end..\n");
