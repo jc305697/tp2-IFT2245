@@ -43,7 +43,6 @@ int server_socket_fd;
 // Nombre de client enregistré.
 int nbClients=0;
 
-int *nbChaqueRess;
 int nbRessources;
 
 void  processBEG( socklen_t socket_len );
@@ -70,6 +69,7 @@ unsigned int request_processed = 0;
 // Nombre de clients ayant envoyé le message CLO.
 unsigned int clients_ended = 0;
 // TODO: Ajouter vos structures de données partagées, ici.
+int *provided;
 int *available;
 int **allocated;
 int **max;
@@ -318,6 +318,7 @@ void openAndGetline(int command, socklen_t socket_len){
               nbRessources = atoi(input->data[1]);
               nbClients = atoi(input->data[2]);  
               available = malloc (nbRessources * sizeof(int));
+              provided = malloc (nbRessources * sizeof(int));
               clientWaiting = calloc(nbClients,sizeof(bool));
               for (int i = 0; i < nbClients; ++i){
               	clientWaiting[i] = false;
@@ -335,7 +336,8 @@ void openAndGetline(int command, socklen_t socket_len){
           if (strcmp(input->data[0],"PRO") == 0){
                 tag = 1;
                 for (int i=0;i<nbRessources;i++){
-                    available[i] = atoi(input->data[i+1]);
+                    provided[i] = atoi(input->data[i+1]);
+                    available[i] = provided[i];
                 }
       
                 allocated = malloc (nbClients * sizeof (int*));
@@ -420,7 +422,7 @@ bool commEND (FILE *socket_r,FILE *socket_w){
        
         for (int i = 0; i < nbRessources; ++i){
 
-          if(nbChaqueRess[i] != available[i]){
+          if(provided[i] != available[i]){
             sendErreur("des ressources n'ont pas ete liberer",socket_w);
             
             return false ;
@@ -429,7 +431,7 @@ bool commEND (FILE *socket_r,FILE *socket_w){
 
         sigint_handler(1);
         free(available);
-        free(nbChaqueRess);
+        free(provided);
         
         //detruit les mutex et libère la mémoire pour mettre fin au serveur
         
@@ -514,7 +516,7 @@ void st_process_requests (server_thread * st, int socket_fd){
         int tidClient = atoi(input->data[1]);
         pthread_mutex_lock(&lockMax);
        for (int i=0; i<nbRessources;i++){
-           if (atoi(input->data[i+2]) > available[i]){
+           if (atoi(input->data[i+2]) > provided[i]){
                 printf("Demande trop grande \n");
                 fclose (socket_r);
                 fclose (socket_w);
@@ -606,7 +608,7 @@ void cleanBanker(struct array_t_string *input, FILE* socket_w){
 
 //Algo inspiré de geeksforgeeks.org/operating-system-bankers-algorithm
 int stateSafe(struct array_t_string *input,int tidClient){
-    printf("Banquier vérifie l'état.. \n");
+    //printf("Banquier vérifie l'état.. \n");
     int work[nbRessources];
     //TODO
     int finish[nbClients];
