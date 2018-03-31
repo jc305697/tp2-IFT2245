@@ -110,7 +110,7 @@ void sendWait(int temps,FILE *socket_w,int tid_client){
 }
 
 void sendAck(FILE *socket_w, int clientTid){
-  printf("Serveur va envoyer ACK \n");
+  printf("Serveur va envoyer ACK à client %d \n", clientTid);
   fprintf (socket_w, "ACK \n");
   fflush(socket_w);
   pthread_mutex_lock(&lockClientWait);
@@ -215,11 +215,10 @@ void fillMatrix(){
 
 
 void st_banker(int tidClient, struct array_t_string *input, FILE* socket_w){
-    printf("Le banquier commence \n");
+    //printf("Le banquier commence \n");
     pthread_mutex_lock(&lockBanker);
       //Valid format
       for (int i=0; i<nbRessources;i++){
-      		printf("atoi = %d  de %s \n  ", atoi(input->data[i+2]),input->data[i+2]);
             if (atoi(input->data[i+2]) > 0){
                 printf("BANQUIER : DEMANDE %d | DEJA ALLOUE : %d | MAX CLIENT : %d \n",atoi(input->data[i+2]), allocated[tidClient][i], max[tidClient][i]);
                 //Ask + allocated doit être <= max
@@ -336,7 +335,7 @@ void openAndGetline(int command, socklen_t socket_len){
           if (strcmp(input->data[0],"PRO") == 0){
                 tag = 1;
                 for (int i=0;i<nbRessources;i++){
-                    available[i] = atoi(input->data[i]);
+                    available[i] = atoi(input->data[i+1]);
                 }
       
                 allocated = malloc (nbClients * sizeof (int*));
@@ -493,7 +492,7 @@ void st_process_requests (server_thread * st, int socket_fd){
     }
 	printf("Serveur a recu : %s  sur  %d",args,socket_fd);
     struct array_t_string *input= parseInput(args);
-    printf("Du client %d \n",atoi(input->data[1]));
+    printf(" du client %d \n",atoi(input->data[1]));
 
     if(strcmp(input->data[0],"END") == 0){
       printf("Serveur a reçu un END \n");
@@ -531,7 +530,7 @@ void st_process_requests (server_thread * st, int socket_fd){
        break;
 
     }else if (strcmp(input->data[0],"REQ") == 0){
-      printf("Serveur rentre dans le REQ \n");
+      //printf("Serveur rentre dans le REQ \n");
       int tidClient = atoi(input->data[1]);  
       st_banker(tidClient,input, socket_w);
 
@@ -589,7 +588,7 @@ void *st_code (void *param){
     if (thread_socket_fd > 0)//si j'ai eu une requete
     {
  
-      printf("Serveur va process la requête du FD %d \n", thread_socket_fd);
+      //printf("Serveur va process la requête du FD %d \n", thread_socket_fd);
       st_process_requests (st, thread_socket_fd);
 
       close (thread_socket_fd);
