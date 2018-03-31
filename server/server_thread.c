@@ -457,6 +457,7 @@ bool commEND (FILE *socket_r,FILE *socket_w){
         lockUnlockDestroy(lockReqPro);
         lockUnlockDestroy(lockClientEnd);
         lockUnlockDestroy(lockClientWait);
+       // sigint_handler(2);
         return true; 
       
     }
@@ -486,6 +487,7 @@ void st_process_requests (server_thread * st, int socket_fd){
       printf("Serveur a reçu un END \n");
       commEND(socket_r,socket_w);
       if (input) {delete_array_string(input);}
+      if (args) {free(args);}
       break;
     }
     else if(array_get_size(input)  < 2 ){

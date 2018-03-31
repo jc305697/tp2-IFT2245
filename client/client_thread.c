@@ -97,6 +97,9 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
         return -1;
     }
 
+   if (client_id ==0 && request_id == 2){
+     printf("veut send END\n" );
+   }
     printf("Client %d attempting to send %s \n",client_id,message);
 
     FILE *socket_w = fdopen(socket_fd, "w");
@@ -378,13 +381,12 @@ void* ct_code (void *param){
 //
 void ct_wait_server (){
 
-sleep(4);
-
+  //sleep(4);
+  while(count_dispatched != num_clients);
 }
 
 
-void ct_init (client_thread * ct)
-{
+void ct_init (client_thread * ct){
   ct->id = count++;
   ct->initressources = malloc(num_resources*sizeof(int));
   ct->initmax = malloc(num_resources*sizeof(int));
