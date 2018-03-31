@@ -144,8 +144,8 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
          lockIncrUnlock(lockCount_wait,count_on_wait);
          //struct array_t* input = parseInput(test);
         //TODO: Trouver une manière d'aller fetch deuxieme arg san changer input
-         sleep(1);
-         //send_request (client_id, request_id, socket_fd, args);
+         sleep(5);
+         send_request (client_id, request_id, socket_fd, args);
 	  }else{
          printf("Invalid protocol action");
       }
@@ -227,29 +227,31 @@ void make_request(client_thread* ct ){
         if (request_id == (num_request_per_client-1)){
             printf("+-+-+Je suis dans la dernière requête +-+-+ \n");
             for (int i = 0; i < num_resources; ++i){
-  			    sprintf(append," %d",ct->initressources[i]); 
+                int temp = ct->initressources[i];
+                temp = temp*-1;
+  			    sprintf(append," %d",temp); 
         	    strcat(message, append);
   		    }
         }else{
             int val;
   		    for (int i = 0; i < num_resources; ++i){
-                printf("POUR LE CLIENT %d \n", ct->id);
-                printf("PRO TOTALE %d | MAX CLIENT %d | ALLOCATED CLIENT %d \n",provisioned_resources[i],ct->initmax[i],ct->initressources[i]);
+                //printf("POUR LE CLIENT %d \n", ct->id);
+                //printf("PRO TOTALE %d | MAX CLIENT %d | ALLOCATED CLIENT %d \n",provisioned_resources[i],ct->initmax[i],ct->initressources[i]);
                 if(ct->initressources[i]>=1){
                     int negorpos = make_random_req(provisioned_resources[i]);
-                    printf("RANDOMIZE NEG OR POS %d \n", negorpos);
+                    //printf("RANDOMIZE NEG OR POS %d \n", negorpos);
                     if (negorpos<0){
                         val = make_random(ct->initressources[i]);
                         val = -1* val;
-                        printf("RANDOMIZE NEGATIVE %d \n",val);
+                        //printf("RANDOMIZE NEGATIVE %d \n",val);
                     }else{
                         val = make_random(ct->initmax[i]-ct->initressources[i]);
-                        printf("RANDOMIZE POSITIVE %d \n", val);
+                        //printf("RANDOMIZE POSITIVE %d \n", val);
                     }
                 }else{
                    
                     val = make_random(ct->initmax[i]-ct->initressources[i]);
-                    printf("FIRST RANDOM VALUE OBTAINED %d \n", val);
+                    //printf("FIRST RANDOM VALUE OBTAINED %d \n", val);
                 }
                 temp[i] = val;
   			    sprintf(append," %d",val); 
@@ -258,11 +260,11 @@ void make_request(client_thread* ct ){
         }
         strcat(message, " \n");
     	if (send_request (ct->id, request_id, client_socket_fd,message) != 1){
-	    	    	printf("Client %d - ACK NOT RECEIVED \n", client_socket_fd);
+	    	    	printf("Client %d - ACK NOT RECEIVED \n", ct->tid);
    		 }
     	else{
                 //TODO: Pas vraiment un ack, il lit pas le socket
-	    		printf("Client %d - ACK RECEIVED \n", client_socket_fd);
+	    		printf("Client %d - ACK RECEIVED \n", ct->tid);
                 for (int i = 0; i < num_resources; i++){
                     ct->initressources[i] += temp[i];
                 }
@@ -272,38 +274,44 @@ void make_request(client_thread* ct ){
 }
 
 void* ct_code (void *param){
-    int client_socket_fd = client_connect_server();
-    client_thread *ct = (client_thread *) param;
-    //Initialise le client
+    int tagINI = 0;
+    client_thread *ct;
+    int client_socket_fd;
     char message[50]="INI";
-    char append[25];
-    sprintf(append," %d",ct->id); // put the int into a string
-    strcat(message, append);
-    int popo;
-    //Choisit valeurs max de façon random
-    for (int i =0; i < num_resources;i++){
-        //On a au moins une ressource        
-        popo = make_random(provisioned_resources[i]);
-        ct->initmax[i] = popo;
-        memset(append, 0, sizeof(append));
-        sprintf(append," %d",popo); // put the int into a string
-        strcat(message, append); // modified to append string
+    while(!tagINI){
+        client_socket_fd = client_connect_server();
+        ct = (client_thread *) param;
+        //Initialise le client
+ 
+        char append[25];
+        sprintf(append," %d",ct->id); // put the int into a string
+        strcat(message, append);
+        int popo;
+        //Choisit valeurs max de façon random
+        for (int i =0; i < num_resources;i++){
+            //On a au moins une ressource        
+            popo = make_random(provisioned_resources[i]);
+            ct->initmax[i] = popo;
+            memset(append, 0, sizeof(append));
+            sprintf(append," %d",popo); // put the int into a string
+            strcat(message, append); // modified to append string
+        }
+        strcat(message, " \n");
+
+
+        //Envoie la requête INI
+        if (send_request(ct->id,-1,client_socket_fd,message) != 1){
+        	printf("Client INI on %d FD %d - ACK NOT RECEIVED \n", ct->id, client_socket_fd);
+        }
+
+        else{
+        	printf("Client INI on %d FD %d - ACK RECEIVED \n", ct->id, client_socket_fd);
+            tagINI = 1;
+        }
+
+        printf("Closing socket %d for Client %d \n", client_socket_fd, ct->id);
+        close(client_socket_fd);
     }
-    strcat(message, " \n");
-
-
-    //Envoie la requête INI
-    if (send_request(ct->id,-1,client_socket_fd,message) != 1){
-    	printf("Client %d FD %d - ACK NOT RECEIVED \n", ct->id, client_socket_fd);
-    }
-
-    else{
-    	printf("Client %d FD %d - ACK RECEIVED \n", ct->id, client_socket_fd);
-    }
-
-    printf("Closing socket %d for Client %d \n", client_socket_fd, ct->id);
-    close(client_socket_fd);
-
   make_request(ct);
 
   client_socket_fd = client_connect_server();
@@ -314,11 +322,11 @@ void* ct_code (void *param){
   strcat(message1, " \n");
   
     if(send_request (ct->id, num_request_per_client, client_socket_fd,message) != 0){
-       printf("Client %d FD %d - ACK NOT RECEIVED \n", ct->id, client_socket_fd);
+       printf("Client CLO %d on FD %d - ACK NOT RECEIVED \n", ct->id, client_socket_fd);
      }
 
     else{
-       printf("Client %d FD %d - ACK RECEIVED \n", ct->id, client_socket_fd);
+        printf("Client CLO %d on FD %d - ACK RECEIVED \n", ct->id, client_socket_fd);
      	pthread_mutex_lock(&lockCount_disp);
         count_dispatched++;
        	pthread_mutex_unlock(&lockCount_disp);
