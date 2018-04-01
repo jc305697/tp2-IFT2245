@@ -75,6 +75,7 @@ int **allocated;
 int **max;
 int **need;
 bool *clientWaiting;
+
 void lockIncrementUnlock(pthread_mutex_t mut, unsigned int *count){
   pthread_mutex_lock(&mut);
   *count += 1;
@@ -356,9 +357,10 @@ void openAndGetline(int command, socklen_t socket_len){
           }
       }
     }
-      fclose (socket_r);
-      if(!tag){
+      
+      if(!tag){//si a pas recu commande voulu
         fclose (socket_w);
+        fclose (socket_r);
       }
       if (args) {free(args);}
   }while (!tag);
@@ -366,6 +368,7 @@ void openAndGetline(int command, socklen_t socket_len){
   sendAck(socket_w,-1);
   if (input) {delete_array_string(input);}
   fclose (socket_w);
+  fclose (socket_r);
 }
 
 
@@ -504,7 +507,7 @@ void st_process_requests (server_thread * st, int socket_fd){
   char *args;
   size_t args_len;
   while (true){
-    
+  bool liberer = false;  
     args_len=0;
 
     //TODO: Vérifier si OK, buggait dans client
@@ -523,7 +526,11 @@ void st_process_requests (server_thread * st, int socket_fd){
 
     if(array_get_size(input)  < 2 ){
         sendErreur("Pas assez d'arguments",socket_w);
-        if (input) {delete_array_string(input);}
+        if (input) {
+        	delete_array_string(input);
+        	liberer =true;
+        }
+        
         if (args) {free(args);}
         fclose (socket_r);
         fclose (socket_w);
@@ -539,7 +546,11 @@ void st_process_requests (server_thread * st, int socket_fd){
        for (int i=0; i<nbRessources;i++){
            if (atoi(input->data[i+2]) > provided[i]){
                 printf("****************Demande trop grande************** \n");
-                if (input) {delete_array_string(input);}
+                if (input) {
+                	delete_array_string(input);
+                	liberer =true;
+                }
+                 
                 if (args) {free(args);}
                 fclose (socket_r);
                 fclose (socket_w);
@@ -565,7 +576,11 @@ void st_process_requests (server_thread * st, int socket_fd){
                 if (allocated[tidClient][i]!=0){
                     printf("valeur pas à 0 %d pour client %d \n",i,tidClient);
                     printf("Erreur, avant de close doit avoir libéré tout");
-                    if (input) {delete_array_string(input);}
+                    if (input) {
+                    	delete_array_string(input);
+                   		liberer =true;
+                   	}
+
                     if (args) {free(args);}
                     fclose (socket_r);
                     fclose (socket_w);
@@ -584,7 +599,7 @@ void st_process_requests (server_thread * st, int socket_fd){
     }        
 
   }
-if (input) {delete_array_string(input);}
+if (input && !liberer) {delete_array_string(input);}
 if (args) {free(args);}
 fclose (socket_r);
 fclose (socket_w);
