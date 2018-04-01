@@ -91,7 +91,7 @@ void lockIncrUnlock(pthread_mutex_t mymutex, int count){
 // Assurez-vous que la dernière requête d'un client libère toute les ressources
 // qu'il a jusqu'alors accumulées.
 int 
-send_request (int client_id, int request_id, int socket_fd,char* message) {
+send_request (int client_id, int request_id, int socket_fd, char* message) {
    if (message == NULL){
         printf("Erreur, message vide \n");    
         return -1;
@@ -108,7 +108,7 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
     FILE *socket_r = fdopen(socket_fd, "r");
     char* args;
     size_t args_len = 0;     
-    ssize_t cnt = getline(&args, &args_len, socket_r);//peut mettre dans un while tant que cnt = -1
+    ssize_t cnt = getline(&args, &args_len, socket_r);
     printf("Client %d received %s \n", client_id, args);
     fclose(socket_w);
     fclose(socket_r);
@@ -116,8 +116,7 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
     switch (cnt) {
         case -1:
             perror("Erreur réception client \n");
-
-            return -1;
+            return cnt;
         default:
             break;
     }
@@ -139,9 +138,7 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
          //struct array_t* input = parseInput(test);
         //TODO: Trouver une manière d'aller fetch deuxieme arg san changer input
          sleep(5);
-        
          socket_fd = -2;
-        
          while (socket_fd == -2){
             socket_fd = client_connect_server();
          }
@@ -280,10 +277,11 @@ void make_request(client_thread* ct ){
 void* ct_code (void *param){
     int tagINI = 0;
     client_thread *ct;
-    int client_socket_fd = -2;
+    int client_socket_fd;
 
     while(!tagINI){
         char message[25]="INI";
+        client_socket_fd = -2;
         while (client_socket_fd == -2){
             client_socket_fd = client_connect_server();
         }
@@ -316,7 +314,7 @@ void* ct_code (void *param){
             tagINI = 1;
         }
 
-        printf("Closing socket %d for Client %d \n", client_socket_fd, ct->id);
+        //printf("Closing socket %d for Client %d \n", client_socket_fd, ct->id);
         //close(client_socket_fd);
     }
       make_request(ct);
