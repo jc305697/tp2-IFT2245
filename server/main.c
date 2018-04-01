@@ -28,14 +28,10 @@ int main (int argc, char *argv[argc + 1])
     st[i].id = i;
     pthread_attr_init (&(st[i].pt_attr));
     pthread_create (&(st[i].pt_tid), &(st[i].pt_attr), &st_code, &(st[i]));
-    printf("in the thread loop after create \n");
   }
 
-  printf("between the create and join \n");
-  for (unsigned int i = 0; i < num_server_threads; i++){
-    printf("before the join \n");  
-    pthread_join (st[i].pt_tid, NULL);
-    printf("****************under the join \n");    
+  for (unsigned int i = 0; i < num_server_threads; i++){  
+    pthread_join (st[i].pt_tid, NULL);   
     }
 
   printf("**************before the journal \n");

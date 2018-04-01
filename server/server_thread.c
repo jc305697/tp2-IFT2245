@@ -187,11 +187,6 @@ void closeStream(FILE *sockr, FILE *sockw){
     fclose(sockw);
 }
 
-void freeValues(char *args, struct array_t_string *input){
-    if (args) {free(args);}
-    if (input) {delete_array_string(input);}
-}
-
 void fillMatrix(){
     for (int i=0;i<nbClients;i++){
         for (int j=0; j<nbRessources;j++){
@@ -279,7 +274,7 @@ void st_banker(int tidClient, struct array_t_string *input, FILE* socket_w){
 
 
 void openAndGetline(int command, socklen_t socket_len){
-  int socketFd = -1;
+  int socketFd;
   int tag;
   printf("Serveur accepting... \n");
   FILE *socket_r;
@@ -287,7 +282,7 @@ void openAndGetline(int command, socklen_t socket_len){
   struct array_t_string *input;
   do{
     tag = 0;
-
+    socketFd=-1;
     while( socketFd == -1) { 
       socketFd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
     }
@@ -299,24 +294,27 @@ void openAndGetline(int command, socklen_t socket_len){
     size_t args_len=0;
 
     if(getline(&args,&args_len,socket_r) == -1){
+      //TODO: VÉRIFIER SI OK, BUGGAIT DANS CLIENT
       sendErreur("Pas reçu de commande",socket_w);
       if (args) {free(args);}
-      closeStream(socket_r,socket_w);
+      fclose (socket_r);
+      fclose (socket_w);
       continue;
     }else{
+
       input = parseInput(args);
       //BEG
       if(command==1){
           if(array_get_size(input) != 3 ){
             sendErreur("Trop ou pas assez d'arguments (BEG nbRess nbCli)",socket_w);
-            freeValues(args, input);
-            closeStream(socket_r, socket_w);
+            fclose (socket_r);
+            fclose (socket_w);
+      if (args) {free(args);}
             continue;
           }
           if (strcmp(input->data[0],"BEG\n") !=0){
               printf("OK REÇU LE BEG \n");
               tag = 1;
-              args_len = 0;
               nbRessources = atoi(input->data[1]);
               nbClients = atoi(input->data[2]);  
               available = malloc (nbRessources * sizeof(int));
@@ -331,8 +329,9 @@ void openAndGetline(int command, socklen_t socket_len){
       }else if (command==2){
           if(array_get_size(input) != nbRessources + 1){
             sendErreur("Trop ou pas assez d'arguments(PRO res1 res2 ...)",socket_w);
-            freeValues(args, input);
-            closeStream(socket_r, socket_w);
+            fclose (socket_r);
+            fclose (socket_w);
+      if (args) {free(args);}
             continue;
           }
           if (strcmp(input->data[0],"PRO") == 0){
@@ -357,10 +356,16 @@ void openAndGetline(int command, socklen_t socket_len){
           }
       }
     }
+      fclose (socket_r);
+      if(!tag){
+        fclose (socket_w);
+      }
+      if (args) {free(args);}
   }while (!tag);
+
   sendAck(socket_w,-1);
   if (input) {delete_array_string(input);}
-  closeStream(socket_r, socket_w);
+  fclose (socket_w);
 }
 
 
@@ -501,7 +506,8 @@ void st_process_requests (server_thread * st, int socket_fd){
   while (true){
     
     args_len=0;
-    //printf("About to getline Client dans process et socket_fd= %d \n", socket_fd);
+
+    //TODO: Vérifier si OK, buggait dans client
     if(getline(&args,&args_len,socket_r) == -1){
       sendErreur("Pas reçu de commande",socket_w);
       if (args) {free(args);}
@@ -557,6 +563,7 @@ void st_process_requests (server_thread * st, int socket_fd){
         //printf("Serveur dans le CLO \n");
           for(int i=0;i<nbRessources;i++){
                 if (allocated[tidClient][i]!=0){
+                    printf("valeur pas à 0 %d pour client %d \n",i,tidClient);
                     printf("Erreur, avant de close doit avoir libéré tout");
                     if (input) {delete_array_string(input);}
                     if (args) {free(args);}
