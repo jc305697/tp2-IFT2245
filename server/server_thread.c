@@ -506,8 +506,9 @@ void st_process_requests (server_thread * st, int socket_fd){
   struct array_t_string *input;
   char *args;
   size_t args_len;
+  bool liberer;
   while (true){
-  bool liberer = false;  
+  liberer = false;  
     args_len=0;
 
     //TODO: Vérifier si OK, buggait dans client
