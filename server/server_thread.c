@@ -97,6 +97,7 @@ void sendWait(int temps,FILE *socket_w,int tid_client){
   printf("Serveur va envoyer WAIT %d \n",temps);
   fprintf (socket_w, "WAIT %d \n",temps);
   fflush(socket_w);
+  
   pthread_mutex_lock(&lockClientWait);
   clientWaiting[tid_client] = true;
   pthread_mutex_unlock(&lockClientWait);
@@ -401,6 +402,15 @@ void lockUnlockDestroy(pthread_mutex_t mut){
     unlockAndDestroy(mut);
 }
 
+void myFree(int **array){
+  for (int i = 0; i < nbClients; ++i)
+  {
+    free(array[i]);
+  }
+
+  free(array);
+}
+
 bool commEND (FILE *socket_r,FILE *socket_w){
       pthread_mutex_lock(&lockNbClient);
       pthread_mutex_lock(&lockCouDispa);
@@ -434,26 +444,24 @@ bool commEND (FILE *socket_r,FILE *socket_w){
         printf("va detruire lockStrTock\n" );
         unlockAndDestroy(lockStrTock);
 
-        //pthread_mutex_lock(&lockClientWait);
-        //delete_array(&clientQuiWait);
-        //unlockAndDestroy(lockClientWait);
-        /*
+        pthread_mutex_lock(&lockClientWait);
+        free(clientWaiting);
+        unlockAndDestroy(lockClientWait);
+        
         pthread_mutex_lock(&lockMax);
-        delete_array(&max);
-
-        pthread_mutex_unlock(&lockMax);
-        pthread_mutex_destroy(&lockMax);
+        myFree(max);
+        unlockAndDestroy(lockMax);
 
         pthread_mutex_lock(&lockBesoin);
-        delete_array(&besoin);
-        pthread_mutex_unlock(&lockBesoin);
-        pthread_mutex_destroy(&lockBesoin);
+        myFree(need);
+        unlockAndDestroy(lockBesoin);
+       
 
         pthread_mutex_lock(&lockAllouer);
-        delete_array(&allouer);
-        pthread_mutex_unlock(&lockAllouer);
-        pthread_mutex_destroy(&lockAllouer);
-        */
+        myFree(allocated);
+        unlockAndDestroy(lockAllouer);
+        
+        
         printf("va detruire lockNbClient\n" );
         unlockAndDestroy(lockNbClient);
         printf("va detruire lockCountAccep\n" );
@@ -468,9 +476,9 @@ bool commEND (FILE *socket_r,FILE *socket_w){
         lockUnlockDestroy(lockReqPro);
         printf("va detruire lockClientEnd\n" );
         lockUnlockDestroy(lockClientEnd);
-        printf("va detruire lockClientWait\n" );
-        lockUnlockDestroy(lockClientWait);
-       // sigint_handler(2);
+       // sigint_handler(2)
+        printf("va retourner true\n");
+
         return true; 
       
     }
@@ -501,6 +509,7 @@ void st_process_requests (server_thread * st, int socket_fd){
       commEND(socket_r,socket_w);
       if (input) {delete_array_string(input);}
       if (args) {free(args);}
+      printf("va break\n");
       break;
     }
     else if(array_get_size(input)  < 2 ){
@@ -596,7 +605,7 @@ void *st_code (void *param){
       close (thread_socket_fd);
     }
   }
-  //printf("fin de st_code\n");
+  printf("fin de st_code\n");
   return NULL;
 }
 
