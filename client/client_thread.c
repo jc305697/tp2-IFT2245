@@ -116,6 +116,7 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
     switch (cnt) {
         case -1:
             perror("Erreur réception client \n");
+
             return -1;
         default:
             break;
@@ -138,7 +139,9 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
          //struct array_t* input = parseInput(test);
         //TODO: Trouver une manière d'aller fetch deuxieme arg san changer input
          sleep(5);
+        
          socket_fd = -2;
+        
          while (socket_fd == -2){
             socket_fd = client_connect_server();
          }

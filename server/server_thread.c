@@ -208,6 +208,9 @@ void st_banker(int tidClient, struct array_t_string *input, FILE* socket_w){
     //printf("Le banquier commence \n");
     pthread_mutex_lock(&lockBanker);
       //Valid format
+    pthread_mutex_lock(&lockAllouer);
+    pthread_mutex_lock(&lockMax);
+    pthread_mutex_lock(&lockResLibres);
       for (int i=0; i<nbRessources;i++){
             if (atoi(input->data[i+2]) > 0){
                 printf("BANQUIER : DEMANDE %d | DEJA ALLOUE : %d | MAX CLIENT : %d \n",atoi(input->data[i+2]), allocated[tidClient][i], max[tidClient][i]);
@@ -217,6 +220,9 @@ void st_banker(int tidClient, struct array_t_string *input, FILE* socket_w){
                               atoi(input->data[i+2])) >
                               max[tidClient][i]
                     ){
+                    pthread_mutex_unlock(&lockAllouer);
+                    pthread_mutex_unlock(&lockMax);
+                    pthread_mutex_unlock(&lockResLibres);
                     sendErreur("Une valeur demandée trop haute", socket_w);
                     pthread_mutex_unlock(&lockBanker);
                     printf("BANKER - REQ DENIED FOR CLIENT %d \n",tidClient);
@@ -227,6 +233,9 @@ void st_banker(int tidClient, struct array_t_string *input, FILE* socket_w){
                 if(atoi(input->data[i+2]) > available[i]){
                     pthread_mutex_unlock(&lockBanker);
                     printf("BANKER - REQ MUST WAIT FOR CLIENT %d \n", tidClient);
+                    pthread_mutex_unlock(&lockAllouer);
+                    pthread_mutex_unlock(&lockMax);
+                    pthread_mutex_unlock(&lockResLibres);
                     sendWait(max_wait_time,socket_w,tidClient);
                     return;
                 }
@@ -235,6 +244,9 @@ void st_banker(int tidClient, struct array_t_string *input, FILE* socket_w){
             //Req nombre négatif
             }else if (atoi(input->data[i+2]) < 0){
                 if (atoi(input->data[i+2]) > allocated[tidClient][i]){
+                    pthread_mutex_unlock(&lockAllouer);
+                    pthread_mutex_unlock(&lockMax);
+                    pthread_mutex_unlock(&lockResLibres);
                     sendErreur("Une valeur libérée trop haute", socket_w);
                     pthread_mutex_unlock(&lockBanker);
                     printf("BANKER - REQ DENIED FOR CLIENT %d \n",tidClient);  
@@ -258,6 +270,9 @@ void st_banker(int tidClient, struct array_t_string *input, FILE* socket_w){
     }else{
         sendAck(socket_w,tidClient);
     }
+    pthread_mutex_unlock(&lockAllouer);
+    pthread_mutex_unlock(&lockMax);
+    pthread_mutex_unlock(&lockResLibres);
     pthread_mutex_unlock(&lockBanker); 
 }
 
@@ -425,7 +440,6 @@ bool commEND (FILE *socket_r,FILE *socket_w){
         unlockAndDestroy(lockResLibres);
         //printf("va detruire locknbChaqRess\n" );
         unlockAndDestroy(locknbChaqRess);
-
         
         pthread_mutex_lock(&lockStrTock);
         //printf("va detruire lockStrTock\n" );
@@ -487,7 +501,7 @@ void st_process_requests (server_thread * st, int socket_fd){
     args_len=0;
     //printf("About to getline Client dans process et socket_fd= %d \n", socket_fd);
     if(getline(&args,&args_len,socket_r) == -1){
-      sendErreur("Pas reçu de commande",socket_w);
+     // sendErreur("Pas reçu de commande",socket_w);
       if (args) {free(args);}
       break;
     }
