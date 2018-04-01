@@ -50,8 +50,7 @@ int main (int argc, char *argv[]){
       printf("Finished sending all REQ \n");
       
       socket_test = client_connect_server();
-      
-      printf("Right before sending END \n");
+
       send_end(socket_test);
   }else{
     printf("Erreur au niveau de BEG/PRO");
@@ -80,7 +79,6 @@ int checkValue(int val){
 }
 
 void send_end(int socket_fd){
-    printf("About to send end \n");
     while(send_request(0,2,socket_fd,"END \n") != 1){
         printf("Attempting to send END \n");
     }

@@ -105,21 +105,14 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
     FILE *socket_w = fdopen(socket_fd, "w");
     fprintf(socket_w, "%s", message);
     fflush(socket_w);
-    //printf("Message sent = %s \n",message);
-    
-    
     FILE *socket_r = fdopen(socket_fd, "r");
     char* args;
-    size_t args_len = 0;
-    
-    //printf("Client %d waiting for response..\n", socket_fd);
-     
+    size_t args_len = 0;     
     ssize_t cnt = getline(&args, &args_len, socket_r);//peut mettre dans un while tant que cnt = -1
     printf("Client %d received %s \n", client_id, args);
-   
-    //printf("Client %d close le stream %d \n", client_id, socket_fd);
     fclose(socket_w);
     fclose(socket_r);
+    close(socket_fd);
     switch (cnt) {
         case -1:
             perror("Erreur réception client \n");
@@ -128,22 +121,15 @@ send_request (int client_id, int request_id, int socket_fd,char* message) {
             break;
     }
 
-        close(socket_fd);
+
     //struct array_t* input = parseInput(copy);
     if (strcmp(args,"ACK \n") == 0){
-      printf("Un ACK \n");
-      //printf("je suis dans le lock");
 	  lockIncrUnlock(lockCount_acc,count_accepted);
-      //printf("je viens de quitter le lock");
       return 1;
 
     }else{
-      printf("Pas un ACK \n");
-
 	  if (strstr(args,"ERR")){
-         printf("je suis dans err");
     	 lockIncrUnlock(lockCount_inv,count_invalid);
-         //printf("Commande invalide %s \n", input->data[1]);
          printf("Commande invalide %s \n", args);
          return -1;
 	  }else if(strstr(args,"WAIT")){
@@ -251,23 +237,17 @@ void make_request(client_thread* ct ){
         }else{
             int val;
   		    for (int i = 0; i < num_resources; ++i){
-                //printf("POUR LE CLIENT %d \n", ct->id);
-                //printf("PRO TOTALE %d | MAX CLIENT %d | ALLOCATED CLIENT %d \n",provisioned_resources[i],ct->initmax[i],ct->initressources[i]);
                 if(ct->initressources[i]>=1){
                     int negorpos = make_random_req(provisioned_resources[i]);
-                    //printf("RANDOMIZE NEG OR POS %d \n", negorpos);
                     if (negorpos<0){
                         val = make_random(ct->initressources[i]);
                         val = -1* val;
-                        //printf("RANDOMIZE NEGATIVE %d \n",val);
                     }else{
                         val = make_random(ct->initmax[i]-ct->initressources[i]);
-                        //printf("RANDOMIZE POSITIVE %d \n", val);
                     }
                 }else{
                    
                     val = make_random(ct->initmax[i]-ct->initressources[i]);
-                    //printf("FIRST RANDOM VALUE OBTAINED %d \n", val);
                 }
                 temp[i] = val;
   			    sprintf(append," %d",val); 
@@ -283,16 +263,12 @@ void make_request(client_thread* ct ){
                 }
    		 }
     	else{
-                //TODO: Pas vraiment un ack, il lit pas le socket
 	    		printf("Client %d - ACK RECEIVED \n", ct->id);
                 count_accepted+=1;
                 for (int i = 0; i < num_resources; i++){
-                    printf("Client %d avait avant %d \n",ct->id,ct->initressources[i]);
                     ct->initressources[i] += temp[i];
-                    printf("Client %d a maintenant %d \n",ct->id,ct->initressources[i]);
                 }
         request_sent+=1;
-    	//close(client_socket_fd);	
     	}
 
   }
