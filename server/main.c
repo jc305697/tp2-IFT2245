@@ -28,13 +28,17 @@ int main (int argc, char *argv[argc + 1])
     st[i].id = i;
     pthread_attr_init (&(st[i].pt_attr));
     pthread_create (&(st[i].pt_tid), &(st[i].pt_attr), &st_code, &(st[i]));
+    printf("in the thread loop after create \n");
   }
 
-  for (unsigned int i = 0; i < num_server_threads; i++)
+  printf("between the create and join \n");
+  for (unsigned int i = 0; i < num_server_threads; i++){
+    printf("before the join \n");  
     pthread_join (st[i].pt_tid, NULL);
+    printf("****************under the join \n");    
+    }
 
-
-
+  printf("**************before the journal \n");
   // Affiche le journal.
   st_print_results (stdout, true);
   FILE *fp = fopen("server.log", "w");

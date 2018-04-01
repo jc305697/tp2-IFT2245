@@ -205,12 +205,13 @@ void fillMatrix(){
 
 
 void st_banker(int tidClient, struct array_t_string *input, FILE* socket_w){
-    //printf("Le banquier commence \n");
+    
     pthread_mutex_lock(&lockBanker);
       //Valid format
     pthread_mutex_lock(&lockAllouer);
     pthread_mutex_lock(&lockMax);
     pthread_mutex_lock(&lockResLibres);
+
       for (int i=0; i<nbRessources;i++){
             if (atoi(input->data[i+2]) > 0){
                 printf("BANQUIER : DEMANDE %d | DEJA ALLOUE : %d | MAX CLIENT : %d \n",atoi(input->data[i+2]), allocated[tidClient][i], max[tidClient][i]);
@@ -440,6 +441,7 @@ bool commEND (FILE *socket_r,FILE *socket_w){
         unlockAndDestroy(lockResLibres);
         //printf("va detruire locknbChaqRess\n" );
         unlockAndDestroy(locknbChaqRess);
+
         
         pthread_mutex_lock(&lockStrTock);
         //printf("va detruire lockStrTock\n" );
@@ -501,7 +503,7 @@ void st_process_requests (server_thread * st, int socket_fd){
     args_len=0;
     //printf("About to getline Client dans process et socket_fd= %d \n", socket_fd);
     if(getline(&args,&args_len,socket_r) == -1){
-     // sendErreur("Pas reçu de commande",socket_w);
+      sendErreur("Pas reçu de commande",socket_w);
       if (args) {free(args);}
       break;
     }
@@ -510,8 +512,6 @@ void st_process_requests (server_thread * st, int socket_fd){
 
     if(strcmp(input->data[0],"END") == 0){
       commEND(socket_r,socket_w);
-      if (input) {delete_array_string(input);}
-      if (args) {free(args);}
       break;
     }
 
@@ -614,7 +614,7 @@ void *st_code (void *param){
     }
   }
   //printf("fin de st_code\n");
-  return NULL;
+  return st;
 }
 
 void cleanBanker(struct array_t_string *input, FILE* socket_w){
