@@ -2,7 +2,7 @@ CLIENT_DIR=client
 SERVER_DIR=server
 BUILD_DIR=build
 TIMEOUT=10
-VALGRIND=valgrind --leak-check=yes --error-exitcode=1
+VALGRIND=valgrind --leak-check=yes --leak-check=full --show-leak-kinds=all --error-exitcode=1 -v
 CC=gcc
 CFLAGS=-g -std=gnu99 -Wall -pedantic -D_REENTRENT=1
 LDFLAGS=-pthread

@@ -103,9 +103,9 @@ send_request (int client_id, int request_id, int socket_fd, char* message) {
     fprintf(socket_w, "%s", message);
     fflush(socket_w);
     FILE *socket_r = fdopen(socket_fd, "r");
-    char* args=NULL;
+    char* args='\0';
     size_t args_len = 0;     
-    printf("Client socket_w %d, socket_r %d \n", socket_w, socket_r);
+    //printf("Client socket_w %d, socket_r %d \n", socket_w, socket_r);
     int cnt = getline(&args, &args_len, socket_r);
     printf("Client %d received %s \n", client_id, args);
     fclose(socket_w);
@@ -129,7 +129,7 @@ send_request (int client_id, int request_id, int socket_fd, char* message) {
          if (args) {free(args);}
          return -1;
 	  }else if(strstr(args,"WAIT\0")){
-         printf("Client sait qu'il doit WAIT \n");
+         //printf("Client sait qu'il doit WAIT \n");
          lockIncrUnlock(lockCount_wait,count_on_wait);
          //struct array_t* input = parseInput(test);
         //TODO: Trouver une manière d'aller fetch deuxieme arg san changer input
@@ -199,7 +199,7 @@ int client_connect_server(){
         //perror("ERROR connexion");
         return -2;
     };
-    printf("** Client sur le  FD %d est connecté à un serveur ** \n", client_socket_fd);
+    //printf("** Client sur le  FD %d est connecté à un serveur ** \n", client_socket_fd);
 
     return client_socket_fd;
 }
@@ -211,12 +211,12 @@ void make_request(client_thread* ct ){
   for (unsigned int request_id = 0; request_id < num_request_per_client;
       request_id++){
 
-        printf("Client %d attempting to connect to do REQ %d \n", ct->id, request_id);
+      //  printf("Client %d attempting to connect to do REQ %d \n", ct->id, request_id);
         client_socket_fd = -2;
         while (client_socket_fd == -2){
             client_socket_fd = client_connect_server();
         }
-        printf("Client %d connected on FD %d \n", ct->id, client_socket_fd);
+      //  printf("Client %d connected on FD %d \n", ct->id, client_socket_fd);
   		char message[50]  = "REQ";
   		char append[5]; 
   		sprintf(append," %d",ct->id);
@@ -317,7 +317,7 @@ void* ct_code (void *param){
       make_request(ct);
       printf("done requesting, need to close \n");
       //ct_wait_server();
-      printf("after waiting a bit \n");
+    //  printf("after waiting a bit \n");
       client_socket_fd = -2;
       while (client_socket_fd == -2){
             client_socket_fd = client_connect_server();
@@ -337,7 +337,8 @@ void* ct_code (void *param){
             printf("Client CLO %d on FD %d - ACK RECEIVED \n", ct->id, client_socket_fd);
          	pthread_mutex_lock(&lockCount_disp);
             count_dispatched++;
-           	pthread_mutex_unlock(&lockCount_disp);
+            printf("incremente le nb de client qui on close, count_dispatched = %d \n",count_dispatched);
+           pthread_mutex_unlock(&lockCount_disp);
         }
       
         printf("Closing socket %d for Client %d \n", client_socket_fd, ct->id);

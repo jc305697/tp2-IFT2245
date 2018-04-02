@@ -35,7 +35,7 @@ pthread_mutex_t lockClientWait = PTHREAD_MUTEX_INITIALIZER;//Clients a qui j'ai 
 pthread_mutex_t lockBesoin = PTHREAD_MUTEX_INITIALIZER; 
 pthread_mutex_t locknbChaqRess = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t lockBanker = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t lockStrTock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lockClientFini = PTHREAD_MUTEX_INITIALIZER;
 
 
 int server_socket_fd;
@@ -75,6 +75,7 @@ int **allocated;
 int **max;
 int **need;
 bool *clientWaiting;
+bool *clientFini;
 
 void lockIncrementUnlock(pthread_mutex_t mut, unsigned int *count){
   pthread_mutex_lock(&mut);
@@ -209,7 +210,7 @@ void st_banker(int tidClient, struct array_t_string *input, FILE* socket_w){
     pthread_mutex_lock(&lockResLibres);
 
       for (int i=0; i<nbRessources;i++){
-            if (atoi(input->data[i+2]) > 0){
+            if (atoi(input->data[i+2]) > 0){//si demande un nb positif de ressource de type i
                 printf("BANQUIER : DEMANDE %d | DEJA ALLOUE : %d | MAX CLIENT : %d \n",atoi(input->data[i+2]), allocated[tidClient][i], max[tidClient][i]);
                 //Ask + allocated doit être <= max
                 if (
@@ -240,7 +241,7 @@ void st_banker(int tidClient, struct array_t_string *input, FILE* socket_w){
 
             //Req nombre négatif
             }else if (atoi(input->data[i+2]) < 0){
-                if (atoi(input->data[i+2]) > allocated[tidClient][i]){
+                if (atoi(input->data[i+2]) > allocated[tidClient][i]){//je libere trop de ressources
                     pthread_mutex_unlock(&lockAllouer);
                     pthread_mutex_unlock(&lockMax);
                     pthread_mutex_unlock(&lockResLibres);
@@ -321,9 +322,14 @@ void openAndGetline(int command, socklen_t socket_len){
               available = malloc (nbRessources * sizeof(int));
               provided = malloc (nbRessources * sizeof(int));
               clientWaiting = calloc(nbClients,sizeof(bool));
+              clientFini = calloc(nbClients,sizeof(bool));
               for (int i = 0; i < nbClients; ++i){
               	clientWaiting[i] = false;
+              	clientFini[i] = false;
               }
+
+             
+
           }
 
       //PRO
@@ -457,8 +463,10 @@ bool commEND (FILE *socket_r,FILE *socket_w){
         unlockAndDestroy(lockResLibres);
         //printf("va detruire locknbChaqRess\n" );
         unlockAndDestroy(locknbChaqRess);
-        pthread_mutex_lock(&lockStrTock);
-        unlockAndDestroy(lockStrTock);
+       
+        pthread_mutex_lock(&lockClientFini);
+        free(clientFini);
+        unlockAndDestroy(lockClientFini);
         
         pthread_mutex_lock(&lockClientWait);
         free(clientWaiting);
@@ -581,7 +589,7 @@ void st_process_requests (server_thread * st, int socket_fd){
     }else if(strcmp(input->data[0],"CLO") == 0){
         //printf("Serveur dans le CLO \n");
           for(int i=0;i<nbRessources;i++){
-                if (allocated[tidClient][i]!=0){
+                if (allocated[tidClient][i]!=0){//il y a au moins une ressources que le client n'a pas liberer
                     printf("valeur pas à 0 %d pour client %d \n",i,tidClient);
                     printf("Erreur, avant de close doit avoir libéré tout");
                     if (input) {
@@ -595,11 +603,13 @@ void st_process_requests (server_thread * st, int socket_fd){
                     return;
                 }  
           }
+
         lockIncrementUnlock(lockClientEnd,&clients_ended);
         printf("count_dispatched = %d  avant incrementation du client %d \n",count_dispatched,tidClient );
         lockIncrementUnlock(lockCouDispa,&count_dispatched);
         printf("count_dispatched = %d  apres incrementation du client %d \n",count_dispatched,tidClient );
         sendAck(socket_w,tidClient);
+        clientFini[tidClient] = true;
         break;
     }else{
       sendErreur("ERR commande inconnu",socket_w); 
@@ -607,7 +617,7 @@ void st_process_requests (server_thread * st, int socket_fd){
     }        
 
   }
-printf("test libérer= %d \n et socket_w= %d",liberer,socket_w );  
+printf("test libérer= %d \n",liberer );  
 if (input && !liberer) {delete_array_string(input);}
 if (args  && !liberer ) {free(args);}
 if (!liberer){fclose (socket_r);}
@@ -629,8 +639,7 @@ void *st_code (void *param){
     // Wait for a I/O socket.
     thread_socket_fd = st_wait();
     //printf("Serveur a accepté le client FD %d \n", thread_socket_fd);
-    if (thread_socket_fd < 0)
-    {
+    if (thread_socket_fd < 0){
       fprintf (stderr, "Time out on thread %d.\n", st->id);//reesaye plus tard
       continue;
     }
@@ -659,9 +668,12 @@ int stateSafe(struct array_t_string *input,int tidClient){
     int work[nbRessources];//contient les ressources libres
     int finish[nbClients];// est ce que le client i a fini
     int safeSeq[nbClients];
+
+    pthread_mutex_lock(&lockClientFini);
     for (int i = 0 ; i < nbClients; i++){
-        finish[i] = false;
+        finish[i] = clientFini[i]; //au depart aucun client a teminer 
     }
+    pthread_mutex_unlock(&lockClientFini);
     for (int i = 0; i < nbRessources; i++){
         work[i] = available[i];
     }
