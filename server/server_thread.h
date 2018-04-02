@@ -10,15 +10,8 @@
 #include <unistd.h>
 
 #include <errno.h>
-//#include <malloc.h>
-#ifndef _DYN_ARRAY_H
-#define _DYN_ARRAY_H
-
 #include <stddef.h>
 
-
-#endif
-//fin premiere partie code de fred
 
 extern bool accepting_connections;
 
@@ -30,6 +23,15 @@ struct server_thread
   pthread_attr_t pt_attr;
 };
 
+bool commEND (FILE *socket_r,FILE *socket_w);
+void myFree(int **array);
+void lockUnlockDestroy(pthread_mutex_t mut);
+void lockIncrementUnlock(pthread_mutex_t mut, unsigned int *count);
+void unlockAndDestroy(pthread_mutex_t mut);
+void openAndGetline(int command, socklen_t socket_len);
+
+void fillMatrix();
+
 void st_open_socket(int port_number);
 void st_init (void);
 void st_process_request (server_thread *, int);
@@ -39,23 +41,10 @@ void *st_code (void *);
 void st_print_results (FILE *, bool);
 void erreur(const char *message);
 
-
+void sendAck(FILE *socket_w, int clientTid, int req);
+void sendWait(int temps,FILE *socket_w,int tid_client);
 void sendErreur(const char *message, FILE *socket_w);
 
 int st_wait();
 
-
-pthread_mutex_t lockNbClient;
-pthread_mutex_t lockResLibres;
-pthread_mutex_t lockMax;
-pthread_mutex_t lockAllouer;
-pthread_mutex_t lockCountAccep;//nombre de requete accepter
-pthread_mutex_t lockCouWait;//nombre de requete accepter avec mise en attente
-pthread_mutex_t lockCouInvalid;//nombre de requete erronees
-pthread_mutex_t lockCouDispa;//nombre de clients qui se sont terminés correctement
-pthread_mutex_t lockReqPro;//nombre total de requête traites
-pthread_mutex_t lockClientEnd;//nombre de clients ayant envoye le message CLO
-pthread_mutex_t lockClientWait;//Clients a qui j'ai dit de wait
-pthread_mutex_t lockBesoin;
-pthread_mutex_t locknbChaqRess;
 #endif
