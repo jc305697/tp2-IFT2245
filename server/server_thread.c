@@ -508,9 +508,11 @@ void st_process_requests (server_thread * st, int socket_fd){
     liberer = false;  
     args_len=0;
 
+   	 printf("va getline avec socket_fd = %d\n",socket_fd );
     //TODO: Vérifier si OK, buggait dans client
     if(getline(&args,&args_len,socket_r) == -1){
-      sendErreur("Pas reçu de commande",socket_w);
+      //sendErreur("Pas reçu de commande",socket_w);
+      liberer = true; 
       if (args) {free(args);}
       break;
     }
@@ -526,7 +528,7 @@ void st_process_requests (server_thread * st, int socket_fd){
         sendErreur("Pas assez d'arguments",socket_w);
         if (input) {
         	delete_array_string(input);
-        	liberer =true;
+        	//liberer =true;
         }
         
         if (args) {free(args);}
@@ -546,7 +548,7 @@ void st_process_requests (server_thread * st, int socket_fd){
                 printf("****************Demande trop grande************** \n");
                 if (input) {
                 	delete_array_string(input);
-                	liberer =true;
+                	//liberer =true;
                 }
                  
                 if (args) {free(args);}
@@ -576,7 +578,7 @@ void st_process_requests (server_thread * st, int socket_fd){
                     printf("Erreur, avant de close doit avoir libéré tout");
                     if (input) {
                     	delete_array_string(input);
-                   		liberer =true;
+                   		//liberer =true;
                    	}
 
                     if (args) {free(args);}
@@ -597,10 +599,11 @@ void st_process_requests (server_thread * st, int socket_fd){
     }        
 
   }
+printf("test libérer= %d \n et socket_w= %d",liberer,socket_w );  
 if (input && !liberer) {delete_array_string(input);}
-if (args) {free(args);}
+if (args  && !liberer ) {free(args);}
 fclose (socket_r);
-fclose (socket_w);
+fclose (socket_w);//segfault ici
 
 }
 
@@ -645,8 +648,8 @@ void cleanBanker(struct array_t_string *input, FILE* socket_w){
 
 //Algo inspiré de geeksforgeeks.org/operating-system-bankers-algorithm
 int stateSafe(struct array_t_string *input,int tidClient){
-    int work[nbRessources];
-    int finish[nbClients];
+    int work[nbRessources];//contient les ressources libres
+    int finish[nbClients];// est ce que le client i a fini
     int safeSeq[nbClients];
     for (int i = 0 ; i < nbClients; i++){
         finish[i] = false;
@@ -658,25 +661,26 @@ int stateSafe(struct array_t_string *input,int tidClient){
     int count = 0;
     while(count < nbClients){
         bool found = false;
-        for(int i = 0 ; i < nbClients ; i ++){
-            if (!finish[i]){
+        for(int i = 0 ; i < nbClients ; i ++){//itere sur les clients
+            if (!finish[i]){//si le client i n'a pas terminer 
                 int j;
                 for (j = 0; j < nbRessources; j++){
-                    if ((max[i][j]-allocated[i][j]) > work[j]){          
+                    if ((max[i][j]-allocated[i][j]) > work[j]){//si ce dont il a besoin pour obtenir son max est > 
+                    	                                    //au nb de rssource de type j que j'ai alors je break  
                         break;
                     }
                 }
-                if (j == nbRessources){
+                if (j == nbRessources){//si j'ai assez de resource pour lui donner tout
                     for(int k = 0;k < nbRessources; k++){
-                        work[k] += allocated[i][j];
-                        safeSeq[count++]=i;
+                        work[k] += allocated[i][j];//puisque il finira avec ses ressources 
+                        safeSeq[count++]=i;//je dis que le client i finira a la postition count
                         finish[i] =1;
                         found=true;
                     }
                 }
             }
         }
-        if (!found){
+        if (!found){//puisque si rendu la je n'ai pas trouver un client i qui peut finir alors je ne suis pas dans un état sûre 
             for (int k=0; k<nbRessources;k++){
                 //On efface ce qu'on avait fait
                 available[k] += atoi(input->data[k+2]);
@@ -687,9 +691,9 @@ int stateSafe(struct array_t_string *input,int tidClient){
         }
     }
 
-    for(int i=0;i<nbClients;i++){
-        //printf("Safe sequence is %d \n",safeSeq[i]); 
-    }
+    /* for(int i=0;i<nbClients;i++){
+        printf("Safe sequence is %d \n",safeSeq[i]); 
+    }*/
     return 1;
 }
 /*
