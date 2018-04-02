@@ -510,12 +510,20 @@ void st_process_requests (server_thread * st, int socket_fd){
 
    	 printf("va getline avec socket_fd = %d\n",socket_fd );
     //TODO: Vérifier si OK, buggait dans client
-    if(getline(&args,&args_len,socket_r) == -1){
-      //sendErreur("Pas reçu de commande",socket_w);
-      liberer = true; 
-      if (args) {free(args);}
-      break;
-    }
+	  if (socket_r != NULL)
+	  {
+	  	 if(getline(&args,&args_len,socket_r) == -1){
+	      //sendErreur("Pas reçu de commande",socket_w);
+	      liberer = true; 
+	      if (args) {free(args);}
+	      break;
+	    }
+	  }
+	  else{
+	  	liberer =true;
+	  	break;
+	  }
+	   
 	printf("Serveur a recu : %s  sur  %d",args,socket_fd);
     input= parseInput(args);
 
@@ -602,8 +610,9 @@ void st_process_requests (server_thread * st, int socket_fd){
 printf("test libérer= %d \n et socket_w= %d",liberer,socket_w );  
 if (input && !liberer) {delete_array_string(input);}
 if (args  && !liberer ) {free(args);}
-fclose (socket_r);
-fclose (socket_w);//segfault ici
+if (!liberer){fclose (socket_r);}
+if (!liberer){fclose (socket_w);}//segfault ici
+
 
 }
 
