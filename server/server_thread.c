@@ -90,7 +90,7 @@ void sendErreur(const char *message, FILE *socket_w){
   fflush(socket_w);
 
   lockIncrementUnlock(lockCouInvalid,&count_invalid);
-  lockIncrementUnlock(lockReqPro,&request_processed);
+ 
 
   return;
 }
@@ -103,7 +103,7 @@ void sendWait(int temps,FILE *socket_w,int tid_client){
   clientWaiting[tid_client] = true;
   pthread_mutex_unlock(&lockClientWait);
   //lockIncrementUnlock(lockClientWait,count_invalid);
-  lockIncrementUnlock(lockReqPro,&request_processed);
+ 
   //pthread_mutex_lock(&lockClientWait);
   //push_back(&clientWaiting,tid_client);
   //pthread_mutex_unlock(&lockClientWait);
@@ -126,11 +126,7 @@ void sendAck(FILE *socket_w, int clientTid){
   else{
   	pthread_mutex_unlock(&lockClientWait);
   	lockIncrementUnlock(lockCountAccep,&count_accepted);
-  }
-
-
-
-  lockIncrementUnlock(lockReqPro,&request_processed);  
+  } 
 
   return;
 }
@@ -583,6 +579,7 @@ void st_process_requests (server_thread * st, int socket_fd){
 
     }else if (strcmp(input->data[0],"REQ") == 0){
       //printf("Serveur rentre dans le REQ \n"); 
+      lockIncrementUnlock(lockReqPro,&request_processed);	
       st_banker(tidClient,input, socket_w);
       break;
     
