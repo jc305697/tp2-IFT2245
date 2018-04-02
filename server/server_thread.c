@@ -291,7 +291,7 @@ void openAndGetline(int command, socklen_t socket_len){
     socket_r = fdopen (socketFd, "r");
     socket_w = fdopen (socketFd, "w");
 
-    char *args; 
+    char *args = NULL; 
     size_t args_len=0;
 
     if(getline(&args,&args_len,socket_r) == -1){
@@ -348,9 +348,9 @@ void openAndGetline(int command, socklen_t socket_len){
                 need = malloc (nbClients * sizeof (int*));
 
                 for (int i=0; i<nbClients; i++){
-                    allocated[i] = malloc (nbRessources * sizeof (int));
-                    max[i] = malloc (nbRessources * sizeof (int));
-                    need[i] = malloc (nbRessources * sizeof (int));
+                    allocated[i] = malloc ((nbRessources+1) * sizeof (int));
+                    max[i] = malloc ((nbRessources+1) * sizeof (int));
+                    need[i] = malloc ((nbRessources+1) * sizeof (int));
                 }
 
                 fillMatrix();
@@ -510,8 +510,9 @@ void st_process_requests (server_thread * st, int socket_fd){
 
    	 printf("va getline avec socket_fd = %d\n",socket_fd );
     //TODO: Vérifier si OK, buggait dans client
-	  if (socket_r != NULL)
+    if (socket_r != NULL)
 	  {
+         args = NULL;
 	  	 if(getline(&args,&args_len,socket_r) == -1){
 	      //sendErreur("Pas reçu de commande",socket_w);
 	      liberer = true; 
@@ -544,7 +545,6 @@ void st_process_requests (server_thread * st, int socket_fd){
         fclose (socket_w);
         return;
     }
-
     int tidClient = atoi(input->data[1]);
     printf(" du client %d \n",tidClient);
 
@@ -596,9 +596,9 @@ void st_process_requests (server_thread * st, int socket_fd){
                 }  
           }
         lockIncrementUnlock(lockClientEnd,&clients_ended);
-        //printf("count_dispatched = %d  avant incrementation\n",count_dispatched );
+        printf("count_dispatched = %d  avant incrementation du client %d \n",count_dispatched,tidClient );
         lockIncrementUnlock(lockCouDispa,&count_dispatched);
-        //printf("count_dispatched = %d  apres incrementation\n",count_dispatched );
+        printf("count_dispatched = %d  apres incrementation du client %d \n",count_dispatched,tidClient );
         sendAck(socket_w,tidClient);
         break;
     }else{
@@ -612,7 +612,6 @@ if (input && !liberer) {delete_array_string(input);}
 if (args  && !liberer ) {free(args);}
 if (!liberer){fclose (socket_r);}
 if (!liberer){fclose (socket_w);}//segfault ici
-
 
 }
 
@@ -681,7 +680,7 @@ int stateSafe(struct array_t_string *input,int tidClient){
                 }
                 if (j == nbRessources){//si j'ai assez de resource pour lui donner tout
                     for(int k = 0;k < nbRessources; k++){
-                        work[k] += allocated[i][j];//puisque il finira avec ses ressources 
+                        work[k] += allocated[i][k];//puisque il finira avec ses ressources 
                         safeSeq[count++]=i;//je dis que le client i finira a la postition count
                         finish[i] =1;
                         found=true;
