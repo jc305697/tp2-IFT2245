@@ -461,39 +461,37 @@ bool commEND (FILE *socket_r,FILE *socket_w){
         
         pthread_mutex_lock(&lockStrTock);
         unlockAndDestroy(lockStrTock);
-        printf("clientWaiting\n");
+        
         pthread_mutex_lock(&lockClientWait);
         free(clientWaiting);
         unlockAndDestroy(lockClientWait);
-        printf("max\n");
+        
         pthread_mutex_lock(&lockMax);
         myFree(max);
         unlockAndDestroy(lockMax);
-        printf("besoin\n");
+       
         pthread_mutex_lock(&lockBesoin);
         myFree(need);
         unlockAndDestroy(lockBesoin);
-        printf("allouer\n");
+        
         pthread_mutex_lock(&lockAllouer);
         myFree(allocated);
         unlockAndDestroy(lockAllouer);
-      	printf("nbClients\n");
+    
         unlockAndDestroy(lockNbClient);
-        printf("count_accepted\n");
+        
         lockUnlockDestroy(lockCountAccep);
-        printf("count_wait\n");      
+            
         lockUnlockDestroy(lockCouWait);
-        printf("count_invalid\n");
+       
         lockUnlockDestroy(lockCouInvalid);
-        printf("count_dispatched\n");
+       
         unlockAndDestroy(lockCouDispa);
-        printf("detruit reqPro\n");
+       
         lockUnlockDestroy(lockReqPro);     
-        printf("detruit ClientEnd\n");
+        
         lockUnlockDestroy(lockClientEnd); 
-        //printf("detruit client wait\n");     
-       // lockUnlockDestroy(lockClientWait);
-        printf("return true\n");
+        
         return true; 
       
     }
