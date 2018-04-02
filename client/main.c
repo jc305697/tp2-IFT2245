@@ -52,6 +52,8 @@ int main (int argc, char *argv[]){
       socket_test = client_connect_server();
 
       send_end(socket_test);
+      free(provisioned_resources);
+      free(client_threads);
   }else{
     printf("Erreur au niveau de BEG/PRO");
   }

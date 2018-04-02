@@ -117,18 +117,18 @@ send_request (int client_id, int request_id, int socket_fd, char* message) {
         return -1;
     }
     //struct array_t* input = parseInput(copy);
-    if (strcmp(args,"ACK \n") == 0){
+    if (strcmp(args,"ACK \n\0") == 0){
 	  lockIncrUnlock(lockCount_acc,count_accepted);
 	  if (args) {free(args);}
       return 1;
 
     }else{
-	  if (strstr(args,"ERR")){
+	  if (strstr(args,"ERR\0")){
     	 lockIncrUnlock(lockCount_inv,count_invalid);
          printf("Commande invalide %s \n", args);
          if (args) {free(args);}
          return -1;
-	  }else if(strstr(args,"WAIT")){
+	  }else if(strstr(args,"WAIT\0")){
          printf("Client sait qu'il doit WAIT \n");
          lockIncrUnlock(lockCount_wait,count_on_wait);
          //struct array_t* input = parseInput(test);
