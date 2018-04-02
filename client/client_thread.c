@@ -97,17 +97,15 @@ send_request (int client_id, int request_id, int socket_fd, char* message) {
         return -1;
     }
 
-   if (client_id ==0 && request_id == 2){
-     printf("veut send END\n" );
-   }
     printf("Client %d attempting to send %s \n",client_id,message);
 
     FILE *socket_w = fdopen(socket_fd, "w");
     fprintf(socket_w, "%s", message);
     fflush(socket_w);
     FILE *socket_r = fdopen(socket_fd, "r");
-    char* args;
+    char* args=NULL;
     size_t args_len = 0;     
+    printf("Client socket_w %d, socket_r %d \n", socket_w, socket_r);
     int cnt = getline(&args, &args_len, socket_r);
     printf("Client %d received %s \n", client_id, args);
     fclose(socket_w);
@@ -115,17 +113,20 @@ send_request (int client_id, int request_id, int socket_fd, char* message) {
     close(socket_fd);
     if (args == NULL && cnt == -1){
         perror("Erreur réception client \n");
+	    if (args) {free(args);}
         return -1;
     }
     //struct array_t* input = parseInput(copy);
     if (strcmp(args,"ACK \n") == 0){
 	  lockIncrUnlock(lockCount_acc,count_accepted);
+	  if (args) {free(args);}
       return 1;
 
     }else{
 	  if (strstr(args,"ERR")){
     	 lockIncrUnlock(lockCount_inv,count_invalid);
          printf("Commande invalide %s \n", args);
+         if (args) {free(args);}
          return -1;
 	  }else if(strstr(args,"WAIT")){
          printf("Client sait qu'il doit WAIT \n");
@@ -139,9 +140,11 @@ send_request (int client_id, int request_id, int socket_fd, char* message) {
          }
          int resultat = send_request (client_id, request_id, socket_fd, message);
          printf("Right after recursion \n");
+         if (args) {free(args);}
          return resultat;
 	  }else{
          printf("Invalid protocol action \n");
+	     if (args) {free(args);}
          return -1;
       }
     }

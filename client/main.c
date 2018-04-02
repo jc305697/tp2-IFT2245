@@ -79,7 +79,8 @@ int checkValue(int val){
 }
 
 void send_end(int socket_fd){
-    while(send_request(0,2,socket_fd,"END \n") != 1){
+    char * message = "END \n";
+    while(send_request(-1,0,socket_fd,message) != 1){
         printf("Attempting to send END \n");
     }
     printf("Server should end..\n");
