@@ -75,6 +75,7 @@ int **allocated;
 int **max;
 int **need;
 bool *clientWaiting;
+
 void lockIncrementUnlock(pthread_mutex_t mut, unsigned int *count){
   pthread_mutex_lock(&mut);
   *count += 1;
@@ -140,7 +141,7 @@ struct array_t_string *parseInput(char *input){
  
   char *reste;
   char *token = strtok_r(input,"\n",&reste);
-  struct array_t_string *array = new_arrayString(5);
+  struct array_t_string *array = new_arrayString(15);
   char *reste1; 
   token = strtok_r(token," ",&reste1);
   if(push_backString(array,token)==-1){
@@ -185,11 +186,6 @@ struct array_t_string *parseInput(char *input){
 void closeStream(FILE *sockr, FILE *sockw){
     fclose(sockr);
     fclose(sockw);
-}
-
-void freeValues(char *args, struct array_t_string *input){
-    if (args) {free(args);}
-    if (input) {delete_array_string(input);}
 }
 
 void fillMatrix(){
@@ -279,7 +275,7 @@ void st_banker(int tidClient, struct array_t_string *input, FILE* socket_w){
 
 
 void openAndGetline(int command, socklen_t socket_len){
-  int socketFd = -1;
+  int socketFd;
   int tag;
   printf("Serveur accepting... \n");
   FILE *socket_r;
@@ -287,7 +283,7 @@ void openAndGetline(int command, socklen_t socket_len){
   struct array_t_string *input;
   do{
     tag = 0;
-
+    socketFd=-1;
     while( socketFd == -1) { 
       socketFd = accept(server_socket_fd,(struct sockaddr *)&thread_addr, &socket_len);
     }
@@ -299,24 +295,27 @@ void openAndGetline(int command, socklen_t socket_len){
     size_t args_len=0;
 
     if(getline(&args,&args_len,socket_r) == -1){
+      //TODO: VÉRIFIER SI OK, BUGGAIT DANS CLIENT
       sendErreur("Pas reçu de commande",socket_w);
       if (args) {free(args);}
-      closeStream(socket_r,socket_w);
+      fclose (socket_r);
+      fclose (socket_w);
       continue;
     }else{
+
       input = parseInput(args);
       //BEG
       if(command==1){
           if(array_get_size(input) != 3 ){
             sendErreur("Trop ou pas assez d'arguments (BEG nbRess nbCli)",socket_w);
-            freeValues(args, input);
-            closeStream(socket_r, socket_w);
+            fclose (socket_r);
+            fclose (socket_w);
+      if (args) {free(args);}
             continue;
           }
           if (strcmp(input->data[0],"BEG\n") !=0){
               printf("OK REÇU LE BEG \n");
               tag = 1;
-              args_len = 0;
               nbRessources = atoi(input->data[1]);
               nbClients = atoi(input->data[2]);  
               available = malloc (nbRessources * sizeof(int));
@@ -331,8 +330,9 @@ void openAndGetline(int command, socklen_t socket_len){
       }else if (command==2){
           if(array_get_size(input) != nbRessources + 1){
             sendErreur("Trop ou pas assez d'arguments(PRO res1 res2 ...)",socket_w);
-            freeValues(args, input);
-            closeStream(socket_r, socket_w);
+            fclose (socket_r);
+            fclose (socket_w);
+      if (args) {free(args);}
             continue;
           }
           if (strcmp(input->data[0],"PRO") == 0){
@@ -357,10 +357,18 @@ void openAndGetline(int command, socklen_t socket_len){
           }
       }
     }
+      
+      if(!tag){//si a pas recu commande voulu
+        fclose (socket_w);
+        fclose (socket_r);
+      }
+      if (args) {free(args);}
   }while (!tag);
+
   sendAck(socket_w,-1);
   if (input) {delete_array_string(input);}
-  closeStream(socket_r, socket_w);
+  fclose (socket_w);
+  fclose (socket_r);
 }
 
 
@@ -413,6 +421,14 @@ void lockUnlockDestroy(pthread_mutex_t mut){
     pthread_mutex_lock(&mut);
     unlockAndDestroy(mut);
 }
+void myFree(int **array){
+  for (int i = 0; i < nbClients; ++i)
+  {
+    free(array[i]);
+  }
+ 
+  free(array);
+}
 
 bool commEND (FILE *socket_r,FILE *socket_w){
       pthread_mutex_lock(&lockNbClient);
@@ -441,49 +457,38 @@ bool commEND (FILE *socket_r,FILE *socket_w){
         unlockAndDestroy(lockResLibres);
         //printf("va detruire locknbChaqRess\n" );
         unlockAndDestroy(locknbChaqRess);
-
-        
         pthread_mutex_lock(&lockStrTock);
-        //printf("va detruire lockStrTock\n" );
         unlockAndDestroy(lockStrTock);
-
-        //pthread_mutex_lock(&lockClientWait);
-        //delete_array(&clientQuiWait);
-        //unlockAndDestroy(lockClientWait);
-        /*
+        
+        pthread_mutex_lock(&lockClientWait);
+        free(clientWaiting);
+        unlockAndDestroy(lockClientWait);
+        
         pthread_mutex_lock(&lockMax);
-        delete_array(&max);
-
-        pthread_mutex_unlock(&lockMax);
-        pthread_mutex_destroy(&lockMax);
-
+        myFree(max);
+        unlockAndDestroy(lockMax);
+       
         pthread_mutex_lock(&lockBesoin);
-        delete_array(&besoin);
-        pthread_mutex_unlock(&lockBesoin);
-        pthread_mutex_destroy(&lockBesoin);
-
+        myFree(need);
+        unlockAndDestroy(lockBesoin);
+        
         pthread_mutex_lock(&lockAllouer);
-        delete_array(&allouer);
-        pthread_mutex_unlock(&lockAllouer);
-        pthread_mutex_destroy(&lockAllouer);
-        */
-        //printf("va detruire lockNbClient\n" );
+        myFree(allocated);
+        unlockAndDestroy(lockAllouer);
+    
         unlockAndDestroy(lockNbClient);
-        //printf("va detruire lockCountAccep\n" );
+        
         lockUnlockDestroy(lockCountAccep);
-        //printf("va detruire lockCouWait\n" );        
+            
         lockUnlockDestroy(lockCouWait);
-        //printf("va detruire lockCouInvalid\n" );
+       
         lockUnlockDestroy(lockCouInvalid);
-        //printf("va detruire lockCouDispa\n" );
+       
         unlockAndDestroy(lockCouDispa);
-        //printf("va detruire lockReqPro\n" );
-        lockUnlockDestroy(lockReqPro);
-        //printf("va detruire lockClientEnd\n" );
-        lockUnlockDestroy(lockClientEnd);
-        //printf("va detruire lockClientWait\n" );
-        lockUnlockDestroy(lockClientWait);
-       // sigint_handler(2);
+       
+        lockUnlockDestroy(lockReqPro);     
+        
+        lockUnlockDestroy(lockClientEnd);       
         return true; 
       
     }
@@ -498,10 +503,12 @@ void st_process_requests (server_thread * st, int socket_fd){
   struct array_t_string *input;
   char *args;
   size_t args_len;
+  bool liberer;
   while (true){
-    
+    liberer = false;  
     args_len=0;
-    //printf("About to getline Client dans process et socket_fd= %d \n", socket_fd);
+
+    //TODO: Vérifier si OK, buggait dans client
     if(getline(&args,&args_len,socket_r) == -1){
       sendErreur("Pas reçu de commande",socket_w);
       if (args) {free(args);}
@@ -517,7 +524,11 @@ void st_process_requests (server_thread * st, int socket_fd){
 
     if(array_get_size(input)  < 2 ){
         sendErreur("Pas assez d'arguments",socket_w);
-        if (input) {delete_array_string(input);}
+        if (input) {
+        	delete_array_string(input);
+        	liberer =true;
+        }
+        
         if (args) {free(args);}
         fclose (socket_r);
         fclose (socket_w);
@@ -533,7 +544,11 @@ void st_process_requests (server_thread * st, int socket_fd){
        for (int i=0; i<nbRessources;i++){
            if (atoi(input->data[i+2]) > provided[i]){
                 printf("****************Demande trop grande************** \n");
-                if (input) {delete_array_string(input);}
+                if (input) {
+                	delete_array_string(input);
+                	liberer =true;
+                }
+                 
                 if (args) {free(args);}
                 fclose (socket_r);
                 fclose (socket_w);
@@ -557,8 +572,13 @@ void st_process_requests (server_thread * st, int socket_fd){
         //printf("Serveur dans le CLO \n");
           for(int i=0;i<nbRessources;i++){
                 if (allocated[tidClient][i]!=0){
+                    printf("valeur pas à 0 %d pour client %d \n",i,tidClient);
                     printf("Erreur, avant de close doit avoir libéré tout");
-                    if (input) {delete_array_string(input);}
+                    if (input) {
+                    	delete_array_string(input);
+                   		liberer =true;
+                   	}
+
                     if (args) {free(args);}
                     fclose (socket_r);
                     fclose (socket_w);
@@ -577,7 +597,7 @@ void st_process_requests (server_thread * st, int socket_fd){
     }        
 
   }
-if (input) {delete_array_string(input);}
+if (input && !liberer) {delete_array_string(input);}
 if (args) {free(args);}
 fclose (socket_r);
 fclose (socket_w);
@@ -627,43 +647,85 @@ void cleanBanker(struct array_t_string *input, FILE* socket_w){
 int stateSafe(struct array_t_string *input,int tidClient){
     int work[nbRessources];
     int finish[nbClients];
+    int safeSeq[nbClients];
     for (int i = 0 ; i < nbClients; i++){
         finish[i] = false;
     }
     for (int i = 0; i < nbRessources; i++){
         work[i] = available[i];
-        //available
     }
-    int safeTag = true;
-    int finishedTag = true;
-    //Cherche client tq pas déjà fait (finish = false) et chaque need <= work(available)
-    while(!finishedTag && safeTag){
-        finishedTag = true;
-        safeTag = true;
+
+    int count = 0;
+    while(count < nbClients){
+        bool found = false;
         for(int i = 0 ; i < nbClients ; i ++){
             if (!finish[i]){
-                //Si toutes ressources dispos
-                for (int j = 0; j < nbRessources; j++){
-                    if (!((max[tidClient][i]-allocated[tidClient][i]) <= work[j])){ //besoins          
-                        safeTag = false;
+                int j;
+                for (j = 0; j < nbRessources; j++){
+                    if ((max[i][j]-allocated[i][j]) > work[j]){          
                         break;
                     }
                 }
-                if (safeTag){
-                    for (int k = 0; k < nbRessources; k++){
-                        work[k] += allocated[tidClient][k];
+                if (j == nbRessources){
+                    for(int k = 0;k < nbRessources; k++){
+                        work[k] += allocated[i][j];
+                        safeSeq[count++]=i;
+                        finish[i] =1;
+                        found=true;
                     }
-                    finish[i] = true;
-                    i=0;
                 }
             }
         }
-        for (int l = 0; l < nbClients ; l ++){
-            if (!finish[l]){
-                finishedTag = false;
+        if (!found){
+            for (int k=0; k<nbRessources;k++){
+                //On efface ce qu'on avait fait
+                available[k] += atoi(input->data[k+2]);
+                allocated[tidClient][k] -= atoi(input->data[k+2]);
+                need[tidClient][k]  += atoi(input->data[k+2]);
+            }
+            return 0;
+        }
+    }
+
+    for(int i=0;i<nbClients;i++){
+        //printf("Safe sequence is %d \n",safeSeq[i]); 
+    }
+    return 1;
+}
+/*
+//Algo inspiré de geeksforgeeks.org/operating-system-bankers-algorithm
+int stateSafe(struct array_t_string *input,int tidClient){
+    int work[nbRessources];
+    int finish[nbClients];
+
+    for (int i = 0 ; i < nbClients; i++){
+        finish[i] = false;
+    }
+    for (int i = 0; i < nbRessources; i++){
+        work[i] = available[i];
+    }
+
+    int count = 0;
+    int safeTag;
+    //Cherche client tq pas déjà fait (finish = false) et chaque need <= work(available)
+    for(int i = 0 ; i < nbClients ; i ++){
+        if (!finish[i]){
+            //Si toutes ressources dispos
+            for (int j = 0; j < nbRessources; j++){
+                if ((max[i][j]-allocated[i][j]) <= work[j])){          
+                    work[j] += allocated[i][j];
+                    finish[i] = true;
+                }
             }
         }
     }
+    safeTag=true;
+    for (int i = 0; i < nbClients ; i ++){
+        if (!finish[i]){
+            safeTag = false;
+        }
+    }
+    
     //Si on est instable, on n'a pas choisi le bon truc
     if (!safeTag){
         for (int k=0; k<nbRessources;k++){
@@ -676,6 +738,8 @@ int stateSafe(struct array_t_string *input,int tidClient){
     }
     return 1;
 }
+
+*/
 
 //
 // Ouvre un socket pour le serveur.
