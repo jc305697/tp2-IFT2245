@@ -97,7 +97,9 @@ int push_backString(struct array_t_string *array, char *element) {
 void delete_array_string (struct array_t_string *array) {
   if(array) {//si array n'est pas NULL 
       free(array->data);
+      array->data = NULL;
       free(array);
-    array = NULL; 
+      array = NULL; 
+
   }
 }
