@@ -135,7 +135,6 @@ send_request (int client_id, int request_id, int socket_fd, char* message) {
  
     //On traite les choix possibles de réponse du serveur
     if (strcmp(args,"ACK \n\0") == 0){
-	  lockIncrementUnlock(lockCount_acc,&count_accepted);
 	  if (args) {free(args);}
 
       //Notre requête a été acceptée, on retourne un code positif
@@ -144,7 +143,6 @@ send_request (int client_id, int request_id, int socket_fd, char* message) {
     }else{
 
 	  if (strstr(args,"ERR\0")){
-    	 lockIncrementUnlock(lockCount_inv,&count_invalid);
          printf("Commande invalide %s \n", args);
          if (args) {free(args);}
          return -1;
@@ -169,7 +167,7 @@ send_request (int client_id, int request_id, int socket_fd, char* message) {
         while (socket_fd == -2){
            socket_fd = client_connect_server();
         }
-        
+
         int resultat = send_request (client_id, request_id, 
                                        socket_fd, message);
         lockIncrementUnlock(lockReqSent,&request_sent);
@@ -188,7 +186,8 @@ send_request (int client_id, int request_id, int socket_fd, char* message) {
 }
 
 /*
-    TODO
+    Transforme le char* en un array_t_string
+    Permet d'accéder aux mots et aux valeurs rapidement
 */
 struct array_t_string *parseInput(char *input){
   char *reste;
@@ -200,7 +199,7 @@ struct array_t_string *parseInput(char *input){
       perror("parseInput");
     }
   int i =0;
-  //inspirer par https://stackoverflow.com/questions/2227198/segmentation-fault-when-using-strtok-r?newreg=89b070f8caf842f69e47b0b4774f7748
+  //inspiré par https://stackoverflow.com/questions/2227198/segmentation-fault-when-using-strtok-r?newreg=89b070f8caf842f69e47b0b4774f7748
   while(token != NULL){
     token = reste1;
     token = strtok_r(token," ",&reste1);
@@ -325,18 +324,18 @@ void make_request(client_thread* ct ){
         strcat(message, " \n");
 
         //Envoi de la requête
+        lockIncrementUnlock(lockReqSent,&request_sent);
     	if (send_request (ct->id, request_id, client_socket_fd,message) != 1){
 	    	printf("Client %d - ERROR \n", ct->id);
             lockIncrementUnlock(lockCount_inv,&count_invalid);
 
    		}else{
 	    		printf("Client %d - ACK RECEIVED \n", ct->id);
-               // lockIncrementUnlock(lockCount_acc,&count_accepted);
                 //Serveur a accepté notre demande, on affecte les ressources
                 for (int i = 0; i < num_resources; i++){
                     ct->initressources[i] += temp[i];
                 }
-       lockIncrementUnlock(lockReqSent,&request_sent);
+                lockIncrementUnlock(lockCount_acc,&count_accepted);
     	}
 
   }
