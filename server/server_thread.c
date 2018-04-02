@@ -421,6 +421,14 @@ void lockUnlockDestroy(pthread_mutex_t mut){
     pthread_mutex_lock(&mut);
     unlockAndDestroy(mut);
 }
+void myFree(int **array){
+  for (int i = 0; i < nbClients; ++i)
+  {
+    free(array[i]);
+  }
+ 
+  free(array);
+}
 
 bool commEND (FILE *socket_r,FILE *socket_w){
       pthread_mutex_lock(&lockNbClient);
@@ -445,53 +453,47 @@ bool commEND (FILE *socket_r,FILE *socket_w){
         
         //detruit les mutex et libère la mémoire pour mettre fin au serveur
         sigint_handler(1);
-        //printf("va detruire lockResLibres\n" );
+   
         unlockAndDestroy(lockResLibres);
-        //printf("va detruire locknbChaqRess\n" );
+        
         unlockAndDestroy(locknbChaqRess);
 
         
         pthread_mutex_lock(&lockStrTock);
-        //printf("va detruire lockStrTock\n" );
         unlockAndDestroy(lockStrTock);
-
-        //pthread_mutex_lock(&lockClientWait);
-        //delete_array(&clientQuiWait);
-        //unlockAndDestroy(lockClientWait);
-        /*
+        printf("clientWaiting\n");
+        pthread_mutex_lock(&lockClientWait);
+        free(clientWaiting);
+        unlockAndDestroy(lockClientWait);
+        printf("max\n");
         pthread_mutex_lock(&lockMax);
-        delete_array(&max);
-
-        pthread_mutex_unlock(&lockMax);
-        pthread_mutex_destroy(&lockMax);
-
+        myFree(max);
+        unlockAndDestroy(lockMax);
+        printf("besoin\n");
         pthread_mutex_lock(&lockBesoin);
-        delete_array(&besoin);
-        pthread_mutex_unlock(&lockBesoin);
-        pthread_mutex_destroy(&lockBesoin);
-
+        myFree(need);
+        unlockAndDestroy(lockBesoin);
+        printf("allouer\n");
         pthread_mutex_lock(&lockAllouer);
-        delete_array(&allouer);
-        pthread_mutex_unlock(&lockAllouer);
-        pthread_mutex_destroy(&lockAllouer);
-        */
-        //printf("va detruire lockNbClient\n" );
+        myFree(allocated);
+        unlockAndDestroy(lockAllouer);
+      	printf("nbClients\n");
         unlockAndDestroy(lockNbClient);
-        //printf("va detruire lockCountAccep\n" );
+        printf("count_accepted\n");
         lockUnlockDestroy(lockCountAccep);
-        //printf("va detruire lockCouWait\n" );        
+        printf("count_wait\n");      
         lockUnlockDestroy(lockCouWait);
-        //printf("va detruire lockCouInvalid\n" );
+        printf("count_invalid\n");
         lockUnlockDestroy(lockCouInvalid);
-        //printf("va detruire lockCouDispa\n" );
+        printf("count_dispatched\n");
         unlockAndDestroy(lockCouDispa);
-        //printf("va detruire lockReqPro\n" );
-        lockUnlockDestroy(lockReqPro);
-        //printf("va detruire lockClientEnd\n" );
-        lockUnlockDestroy(lockClientEnd);
-        //printf("va detruire lockClientWait\n" );
-        lockUnlockDestroy(lockClientWait);
-       // sigint_handler(2);
+        printf("detruit reqPro\n");
+        lockUnlockDestroy(lockReqPro);     
+        printf("detruit ClientEnd\n");
+        lockUnlockDestroy(lockClientEnd); 
+        //printf("detruit client wait\n");     
+       // lockUnlockDestroy(lockClientWait);
+        printf("return true\n");
         return true; 
       
     }
