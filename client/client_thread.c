@@ -108,20 +108,15 @@ send_request (int client_id, int request_id, int socket_fd, char* message) {
     FILE *socket_r = fdopen(socket_fd, "r");
     char* args;
     size_t args_len = 0;     
-    ssize_t cnt = getline(&args, &args_len, socket_r);
+    int cnt = getline(&args, &args_len, socket_r);
     printf("Client %d received %s \n", client_id, args);
     fclose(socket_w);
     fclose(socket_r);
     close(socket_fd);
-    switch (cnt) {
-        case -1:
-            perror("Erreur réception client \n");
-            return cnt;
-        default:
-            break;
+    if (args == NULL && cnt == -1){
+        perror("Erreur réception client \n");
+        return -1;
     }
-
-
     //struct array_t* input = parseInput(copy);
     if (strcmp(args,"ACK \n") == 0){
 	  lockIncrUnlock(lockCount_acc,count_accepted);
@@ -176,7 +171,7 @@ int client_connect_server(){
 
     //Crée un socket via addresse IPV4 et TCP ou UDP
     if ((client_socket_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-        perror("ERROR opening socket");
+        //perror("ERROR opening socket");
         return -2;
     }
 
@@ -196,10 +191,9 @@ int client_connect_server(){
     //Padding nécessaire posix
     memset (server_address.sin_zero, 0, sizeof (server_address.sin_zero));
     
-    printf("** Client FD %d désire se connecter ** \n", client_socket_fd);
-
+    //printf("** Client FD %d désire se connecter ** \n", client_socket_fd);
     if (connect(client_socket_fd,(struct sockaddr *) &server_address, sizeof(server_address)) < 0 ){
-        perror("ERROR connexion");
+        //perror("ERROR connexion");
         return -2;
     };
     printf("** Client sur le  FD %d est connecté à un serveur ** \n", client_socket_fd);
