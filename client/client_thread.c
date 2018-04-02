@@ -169,10 +169,10 @@ send_request (int client_id, int request_id, int socket_fd, char* message) {
         while (socket_fd == -2){
            socket_fd = client_connect_server();
         }
-
+        
         int resultat = send_request (client_id, request_id, 
                                        socket_fd, message);
-
+        lockIncrementUnlock(lockReqSent,&request_sent);
         if (args) {free(args);}
 
         //On retourne le résultat de l'enfant le plus profond dans l'arbre
@@ -331,7 +331,7 @@ void make_request(client_thread* ct ){
 
    		}else{
 	    		printf("Client %d - ACK RECEIVED \n", ct->id);
-                lockIncrementUnlock(lockCount_acc,&count_accepted);
+               // lockIncrementUnlock(lockCount_acc,&count_accepted);
                 //Serveur a accepté notre demande, on affecte les ressources
                 for (int i = 0; i < num_resources; i++){
                     ct->initressources[i] += temp[i];
