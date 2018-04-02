@@ -43,6 +43,14 @@ pthread_mutex_t lockCount_inv;
 pthread_mutex_t lockCount_disp;
 pthread_mutex_t lockReqSent;
 
+
+/* Réduit duplication de code */
+void lockIncrementUnlock(pthread_mutex_t mut, unsigned int *compteur){
+  pthread_mutex_lock(&mut);
+  *compteur += 1;
+  pthread_mutex_unlock(&mut); 
+}
+
 /*
     Initialise les mutex utilisés dans ce programme
 */
@@ -85,12 +93,8 @@ int make_random_req(int max_resources){
     }
 }
 
-/* Réduit duplication de code */
-void lockIncrUnlock(pthread_mutex_t mymutex, int count){
-    pthread_mutex_lock(&mymutex);
-    count+=1;
-    pthread_mutex_unlock(&mymutex);
-}
+
+
 
 
 /* 
@@ -131,7 +135,7 @@ send_request (int client_id, int request_id, int socket_fd, char* message) {
  
     //On traite les choix possibles de réponse du serveur
     if (strcmp(args,"ACK \n\0") == 0){
-	  lockIncrUnlock(lockCount_acc,count_accepted);
+	  lockIncrementUnlock(lockCount_acc,&count_accepted);
 	  if (args) {free(args);}
 
       //Notre requête a été acceptée, on retourne un code positif
@@ -140,13 +144,13 @@ send_request (int client_id, int request_id, int socket_fd, char* message) {
     }else{
 
 	  if (strstr(args,"ERR\0")){
-    	 lockIncrUnlock(lockCount_inv,count_invalid);
+    	 lockIncrementUnlock(lockCount_inv,&count_invalid);
          printf("Commande invalide %s \n", args);
          if (args) {free(args);}
          return -1;
 
 	  }else if(strstr(args,"WAIT\0")){
-         lockIncrUnlock(lockCount_wait,count_on_wait);
+         lockIncrementUnlock(lockCount_wait,&count_on_wait);
         
         //On transforme la réponse pour obtenir le temps d'attente         
         struct array_t_string* input = parseInput(args);
@@ -187,18 +191,26 @@ send_request (int client_id, int request_id, int socket_fd, char* message) {
     TODO
 */
 struct array_t_string *parseInput(char *input){
-  char *token =strtok(input,"\n");
-  struct array_t_string *array = new_arrayString(5);
-  token = strtok(token," ");
+  char *reste;
+  char *token = strtok_r(input,"\n",&reste);
+  struct array_t_string *array = new_arrayString(15);
+  char *reste1; 
+  token = strtok_r(token," ",&reste1);
+  if(push_backString(array,token)==-1){
+      perror("parseInput");
+    }
   int i =0;
+  //inspirer par https://stackoverflow.com/questions/2227198/segmentation-fault-when-using-strtok-r?newreg=89b070f8caf842f69e47b0b4774f7748
   while(token != NULL){
-  	if(push_backString(array,token)==-1){
-  		perror("PARSE ERROR");
-  	}
-  	token = strtok(NULL," ");
-  	 i +=1;
+    token = reste1;
+    token = strtok_r(token," ",&reste1);
+     i +=1;
+     if(token != NULL && push_backString(array,token)==-1){
+      perror("parseInput");
+    }
   }
   return array;
+
 }
 
 
@@ -315,16 +327,16 @@ void make_request(client_thread* ct ){
         //Envoi de la requête
     	if (send_request (ct->id, request_id, client_socket_fd,message) != 1){
 	    	printf("Client %d - ERROR \n", ct->id);
-            count_invalid+=1;
+            lockIncrementUnlock(lockCount_inv,&count_invalid);
 
    		}else{
 	    		printf("Client %d - ACK RECEIVED \n", ct->id);
-                count_accepted+=1;
+                lockIncrementUnlock(lockCount_acc,&count_accepted);
                 //Serveur a accepté notre demande, on affecte les ressources
                 for (int i = 0; i < num_resources; i++){
                     ct->initressources[i] += temp[i];
                 }
-        request_sent+=1;
+       lockIncrementUnlock(lockReqSent,&request_sent);
     	}
 
   }
@@ -408,9 +420,8 @@ void* ct_code (void *param){
      }else{
         printf("Client CLO %d on FD %d - ACK RECEIVED \n", 
                 ct->id, client_socket_fd);
-     	pthread_mutex_lock(&lockCount_disp);
-        count_dispatched++;
-       	pthread_mutex_unlock(&lockCount_disp);
+     	
+       lockIncrementUnlock(lockCount_disp,&count_dispatched);
      }
       
 
