@@ -396,7 +396,6 @@ void* ct_code (void *param){
      make_request(ct);
 
      printf("Client %d done requesting, need to close \n", ct->id);
-     //TODO ct_wait_server();
 
      //Se reconnecte au serveur
      client_socket_fd = -2;
