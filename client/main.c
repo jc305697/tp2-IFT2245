@@ -87,6 +87,11 @@ int main (int argc, char *argv[]){
   //----------VÉRIFICATION DES ENTRÉES TERMINÉE ------------
 
   int socket_test = client_connect_server();
+  if (socket_test< 0){
+        printf("erreur ouverture de socket\n");
+        return -1;
+  }
+
   ct_start();
   //Si on a réussi à envoyer beg et pro, on peut créer les clients
   if (send_config(socket_test)){
@@ -106,7 +111,13 @@ int main (int argc, char *argv[]){
       printf("Finished sending all REQ HURRAY! \n");
       
       socket_test = client_connect_server();
+      if (socket_test< 0){
+        printf("erreur ouverture de socket\n");
+        return -1;
+      }
+
       send_end(socket_test);
+      
       free(provisioned_resources);
       free(client_threads);
 

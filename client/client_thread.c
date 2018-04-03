@@ -42,6 +42,7 @@ pthread_mutex_t lockCount_wait;
 pthread_mutex_t lockCount_inv;
 pthread_mutex_t lockCount_disp;
 pthread_mutex_t lockReqSent;
+pthread_mutex_t lockCount;
 
 
 /* Réduit duplication de code */
@@ -66,6 +67,8 @@ void ct_start(){
 		perror("Erreur init mutex pour nombre requêtes envoyées");
 	if (pthread_mutex_init(&lockCount_disp,NULL) != 0)
 		perror("Erreur init mutex pour nombre de client terminé");
+  if (pthread_mutex_init(&lockCount,NULL) != 0)
+    perror("Erreur init mutex pour le count des threads");
 }
 
 
@@ -442,7 +445,9 @@ void ct_wait_server (){
     Met les valeurs à 0 pour le max et les ressources allouées
 */
 void ct_init (client_thread * ct){
+  pthread_mutex_lock(&lockCount);
   ct->id = count++;
+  pthread_mutex_unlock(&lockCount);
   ct->initressources = malloc(num_resources*sizeof(int));
   ct->initmax = malloc(num_resources*sizeof(int));
   for (int i = 0; i < num_resources; i++){    
