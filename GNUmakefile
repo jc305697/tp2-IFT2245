@@ -47,10 +47,10 @@ run-client: all
 	@$(BUILD_DIR)/tp2_client 2018 2 10   10 4 23 1 2
 
 run-valgrind-server: all
-	$(VALGRIND) $(BUILD_DIR)/tp2_server 2018 1
+	$(VALGRIND) $(BUILD_DIR)/tp2_server 2018 3
 
 run-server-gdb: all
-	gdb --args  $(BUILD_DIR)/tp2_server 2018
+	gdb --args  $(BUILD_DIR)/tp2_server 2018 3
 
 run-valgrind-client: all
 	$(VALGRIND) $(BUILD_DIR)/tp2_client 2018 5 50   10 4 23 1 2

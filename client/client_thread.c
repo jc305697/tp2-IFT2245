@@ -153,6 +153,7 @@ send_request (int client_id, int request_id, int socket_fd, char* message) {
         //On transforme la réponse pour obtenir le temps d'attente         
         struct array_t_string* input = parseInput(args);
         int temps = atoi(input->data[1]);
+         if (input) {delete_array_string(input);}
 
         //Vérification basique de la valeur envoyée
         if (temps > 0 && temps < 10000000){
