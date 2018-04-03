@@ -44,7 +44,7 @@ run-server: all
 	@$(BUILD_DIR)/tp2_server 2018 3
 
 run-client: all
-	@$(BUILD_DIR)/tp2_client 2018 2 10   10 4 23 1 2
+	@$(BUILD_DIR)/tp2_client 2018 5 50   10 4 23 1 2
 
 run-valgrind-server: all
 	$(VALGRIND) $(BUILD_DIR)/tp2_server 2018 3
